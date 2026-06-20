@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { carregar, salvar } from '../utils/storage';
 import type { OrdemServico } from './OSListScreen';
 import SignatureModal from '../components/SignatureModal';
+import FotosOS from '../components/FotosOS';
 import { gerarESalvarPdfOS } from '../utils/gerarPdfOS';
 
 type Empresa = {
@@ -74,6 +75,17 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
     );
     await salvar('ordensServico', novaLista);
     setOrdem({ ...ordem, status: novoStatus });
+    onAlterado();
+  }
+
+  async function salvarFotos(novasFotos: string[]) {
+    if (!ordem) return;
+    const lista = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
+    const novaLista = lista.map((o) =>
+      o.id === ordem.id ? { ...o, fotos: novasFotos } : o
+    );
+    await salvar('ordensServico', novaLista);
+    setOrdem({ ...ordem, fotos: novasFotos });
     onAlterado();
   }
 
@@ -197,6 +209,28 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
               <Text style={styles.infoValor}>{ordem.descricao}</Text>
             </>
           )}
+
+          {!!ordem.tecnicoResponsavel && (
+            <>
+              <View style={[styles.infoLinha, { marginTop: 14 }]}>
+                <Ionicons name="person-outline" size={16} color="#64748b" />
+                <Text style={styles.infoLabel}>Técnico responsável</Text>
+              </View>
+              <Text style={styles.infoValor}>{ordem.tecnicoResponsavel}</Text>
+            </>
+          )}
+
+          {!!ordem.dataAgendada && (
+            <>
+              <View style={[styles.infoLinha, { marginTop: 14 }]}>
+                <Ionicons name="calendar-outline" size={16} color="#64748b" />
+                <Text style={styles.infoLabel}>Data agendada</Text>
+              </View>
+              <Text style={styles.infoValor}>
+                {ordem.dataAgendada.split('-').reverse().join('/')}
+              </Text>
+            </>
+          )}
         </View>
 
         <View style={styles.card}>
@@ -274,6 +308,15 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
               </TouchableOpacity>
             )}
           </View>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.secaoTitulo}>Fotos</Text>
+          <FotosOS
+            fotos={ordem.fotos ?? []}
+            onChange={salvarFotos}
+            maxFotos={10}
+          />
         </View>
       </ScrollView>
 

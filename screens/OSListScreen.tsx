@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   FlatList,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { carregar } from '../utils/storage';
@@ -19,6 +20,9 @@ export type OrdemServico = {
   descricao: string;
   status: 'Aberta' | 'Em Andamento' | 'Concluída';
   dataCriacao: string;
+  dataAgendada?: string;
+  tecnicoResponsavel?: string;
+  fotos?: string[];
   assinaturaTecnico?: string;
   assinaturaCliente?: string;
 };
@@ -37,15 +41,20 @@ const CORES_STATUS: Record<string, string> = {
 
 export default function OSListScreen({ onVoltar, onNovaOS, onAbrirOS }: Props) {
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
+  const [recarregando, setRecarregando] = useState(false);
 
   const carregarOrdens = useCallback(async () => {
     const lista = await carregar<OrdemServico[]>('ordensServico');
     setOrdens(lista ?? []);
   }, []);
 
-  useEffect(() => {
-    carregarOrdens();
-  }, [carregarOrdens]);
+  useEffect(() => { carregarOrdens(); }, [carregarOrdens]);
+
+  async function recarregar() {
+    setRecarregando(true);
+    await carregarOrdens();
+    setRecarregando(false);
+  }
 
   return (
     <View style={styles.container}>
@@ -70,6 +79,14 @@ export default function OSListScreen({ onVoltar, onNovaOS, onAbrirOS }: Props) {
           data={ordens.slice().reverse()}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.lista}
+          refreshControl={
+            <RefreshControl
+              refreshing={recarregando}
+              onRefresh={recarregar}
+              tintColor="#2563eb"
+              colors={['#2563eb']}
+            />
+          }
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.card}

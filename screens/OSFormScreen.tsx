@@ -17,9 +17,23 @@ import { Ionicons } from '@expo/vector-icons';
 import { carregar, salvar } from '../utils/storage';
 import type { OrdemServico } from './OSListScreen';
 import type { Cliente } from './ClientListScreen';
+import type { Tecnico } from './TecnicosListScreen';
 
 const POSICOES = ['BB', 'BE', 'Vante', 'Ré', 'Outro'];
 const TIPOS = ['Preventiva', 'Corretiva', 'Revisão', 'Instalação'];
+
+function formatarDataInput(valor: string) {
+  const nums = valor.replace(/\D/g, '').slice(0, 8);
+  if (nums.length <= 2) return nums;
+  if (nums.length <= 4) return `${nums.slice(0, 2)}/${nums.slice(2)}`;
+  return `${nums.slice(0, 2)}/${nums.slice(2, 4)}/${nums.slice(4)}`;
+}
+
+function dataParaISO(dataBR: string): string | undefined {
+  const partes = dataBR.split('/');
+  if (partes.length !== 3 || partes[2].length !== 4) return undefined;
+  return `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
+}
 
 type Props = {
   onVoltar: () => void;
@@ -31,11 +45,15 @@ export default function OSFormScreen({ onVoltar, onSalvo, onIrParaClientes }: Pr
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(null);
   const [modalAberto, setModalAberto] = useState(false);
+  const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
+  const [tecnicoSelecionado, setTecnicoSelecionado] = useState<Tecnico | null>(null);
+  const [modalTecnicoAberto, setModalTecnicoAberto] = useState(false);
 
   const [motor, setMotor] = useState('');
   const [posicao, setPosicao] = useState('');
   const [tipoManutencao, setTipoManutencao] = useState('');
   const [descricao, setDescricao] = useState('');
+  const [dataAgendada, setDataAgendada] = useState('');
   const [salvando, setSalvando] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -48,11 +66,8 @@ export default function OSFormScreen({ onVoltar, onSalvo, onIrParaClientes }: Pr
 
   useEffect(() => {
     carregarClientes();
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 400,
-      useNativeDriver: true,
-    }).start();
+    carregar<Tecnico[]>('tecnicos').then((t) => setTecnicos(t ?? []));
+    Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
   }, []);
 
   function animarToque(callback: () => void) {
@@ -80,6 +95,8 @@ export default function OSFormScreen({ onVoltar, onSalvo, onIrParaClientes }: Pr
       descricao,
       status: 'Aberta',
       dataCriacao: new Date().toLocaleDateString('pt-BR'),
+      dataAgendada: dataParaISO(dataAgendada),
+      tecnicoResponsavel: tecnicoSelecionado?.nome,
     };
 
     const listaAtual = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
@@ -214,6 +231,47 @@ export default function OSFormScreen({ onVoltar, onSalvo, onIrParaClientes }: Pr
             </View>
           </View>
 
+          {/* Data agendada */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Data agendada (opcional)</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="calendar-outline" size={18} color="#64748b" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="DD/MM/AAAA"
+                placeholderTextColor="#475569"
+                value={dataAgendada}
+                onChangeText={(v) => setDataAgendada(formatarDataInput(v))}
+                keyboardType="numeric"
+                maxLength={10}
+              />
+            </View>
+          </View>
+
+          {/* Técnico responsável */}
+          {tecnicos.length > 0 && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Técnico responsável (opcional)</Text>
+              <TouchableOpacity
+                style={styles.seletorWrapper}
+                onPress={() => setModalTecnicoAberto(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="person-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                <Text style={[styles.seletorTexto, !tecnicoSelecionado && styles.seletorPlaceholder]}>
+                  {tecnicoSelecionado ? tecnicoSelecionado.nome : 'Selecionar técnico'}
+                </Text>
+                {tecnicoSelecionado ? (
+                  <TouchableOpacity onPress={() => setTecnicoSelecionado(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Ionicons name="close-circle" size={18} color="#64748b" />
+                  </TouchableOpacity>
+                ) : (
+                  <Ionicons name="chevron-down" size={18} color="#64748b" />
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+
           <Animated.View style={{ transform: [{ scale: scaleBotao }], marginTop: 8 }}>
             <TouchableOpacity
               style={styles.button}
@@ -268,6 +326,47 @@ export default function OSFormScreen({ onVoltar, onSalvo, onIrParaClientes }: Pr
                   </View>
                   {clienteSelecionado?.id === item.id && (
                     <Ionicons name="checkmark-circle" size={20} color="#2563eb" />
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de seleção de técnico */}
+      <Modal
+        visible={modalTecnicoAberto}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setModalTecnicoAberto(false)}
+      >
+        <View style={styles.modalFundo}>
+          <View style={styles.modalConteudo}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitulo}>Selecionar Técnico</Text>
+              <TouchableOpacity onPress={() => setModalTecnicoAberto(false)}>
+                <Ionicons name="close" size={24} color="#94a3b8" />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={tecnicos}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.modalItem}
+                  onPress={() => { setTecnicoSelecionado(item); setModalTecnicoAberto(false); }}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.modalItemIcone, { backgroundColor: '#9333ea22' }]}>
+                    <Ionicons name="person" size={18} color="#9333ea" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.modalItemNome}>{item.nome}</Text>
+                    <Text style={styles.modalItemDetalhe}>{item.cargo}</Text>
+                  </View>
+                  {tecnicoSelecionado?.id === item.id && (
+                    <Ionicons name="checkmark-circle" size={20} color="#9333ea" />
                   )}
                 </TouchableOpacity>
               )}

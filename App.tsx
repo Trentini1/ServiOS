@@ -5,10 +5,14 @@ import CompanyRegisterScreen from './screens/CompanyRegisterScreen';
 import HomeScreen from './screens/HomeScreen';
 import OSListScreen from './screens/OSListScreen';
 import OSFormScreen from './screens/OSFormScreen';
-import { salvar, carregar, remover } from './utils/storage';
+import OSDetailScreen from './screens/OSDetailScreen';
 import ClientListScreen from './screens/ClientListScreen';
 import ClientFormScreen from './screens/ClientFormScreen';
-import OSDetailScreen from './screens/OSDetailScreen';
+import AgendaScreen from './screens/AgendaScreen';
+import RelatoriosScreen from './screens/RelatoriosScreen';
+import TecnicosListScreen from './screens/TecnicosListScreen';
+import TecnicoFormScreen from './screens/TecnicoFormScreen';
+import { salvar, carregar, remover } from './utils/storage';
 
 type Empresa = {
   nome: string;
@@ -19,7 +23,17 @@ type Empresa = {
   estado: string;
 };
 
-type Tela = 'home' | 'os-lista' | 'os-form' | 'os-detalhe' | 'clientes-lista' | 'clientes-form';
+type Tela =
+  | 'home'
+  | 'os-lista'
+  | 'os-form'
+  | 'os-detalhe'
+  | 'clientes-lista'
+  | 'clientes-form'
+  | 'agenda'
+  | 'relatorios'
+  | 'tecnicos-lista'
+  | 'tecnicos-form';
 
 export default function App() {
   const [carregandoApp, setCarregandoApp] = useState(true);
@@ -27,6 +41,7 @@ export default function App() {
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [telaAtual, setTelaAtual] = useState<Tela>('home');
   const [osSelecionadaId, setOsSelecionadaId] = useState<string | null>(null);
+  const [telaAnterior, setTelaAnterior] = useState<Tela>('home');
 
   useEffect(() => {
     async function carregarDadosSalvos() {
@@ -38,6 +53,11 @@ export default function App() {
     }
     carregarDadosSalvos();
   }, []);
+
+  function irPara(tela: Tela) {
+    setTelaAnterior(telaAtual);
+    setTelaAtual(tela);
+  }
 
   async function handleLoginSuccess(nome: string) {
     setUsuarioLogado(nome);
@@ -58,13 +78,14 @@ export default function App() {
   }
 
   function handleAbrirMenu(id: string) {
-    if (id === 'os') {
-      setTelaAtual('os-lista');
-    }
-    if (id === 'clientes') {
-      setTelaAtual('clientes-lista');
-    }
-    // 'agenda', 'relatorios' entram nas próximas partes
+    const mapa: Record<string, Tela> = {
+      os: 'os-lista',
+      clientes: 'clientes-lista',
+      agenda: 'agenda',
+      relatorios: 'relatorios',
+      tecnicos: 'tecnicos-lista',
+    };
+    if (mapa[id]) irPara(mapa[id]);
   }
 
   if (carregandoApp) {
@@ -86,11 +107,11 @@ export default function App() {
   if (telaAtual === 'os-lista') {
     return (
       <OSListScreen
-        onVoltar={() => setTelaAtual('home')}
-        onNovaOS={() => setTelaAtual('os-form')}
+        onVoltar={() => irPara('home')}
+        onNovaOS={() => irPara('os-form')}
         onAbrirOS={(id) => {
           setOsSelecionadaId(id);
-          setTelaAtual('os-detalhe');
+          irPara('os-detalhe');
         }}
       />
     );
@@ -99,9 +120,19 @@ export default function App() {
   if (telaAtual === 'os-form') {
     return (
       <OSFormScreen
-        onVoltar={() => setTelaAtual('os-lista')}
-        onSalvo={() => setTelaAtual('os-lista')}
-        onIrParaClientes={() => setTelaAtual('clientes-form')}
+        onVoltar={() => irPara('os-lista')}
+        onSalvo={() => irPara('os-lista')}
+        onIrParaClientes={() => irPara('clientes-form')}
+      />
+    );
+  }
+
+  if (telaAtual === 'os-detalhe' && osSelecionadaId) {
+    return (
+      <OSDetailScreen
+        osId={osSelecionadaId}
+        onVoltar={() => irPara(telaAnterior === 'agenda' ? 'agenda' : 'os-lista')}
+        onAlterado={() => {}}
       />
     );
   }
@@ -109,8 +140,8 @@ export default function App() {
   if (telaAtual === 'clientes-lista') {
     return (
       <ClientListScreen
-        onVoltar={() => setTelaAtual('home')}
-        onNovoCliente={() => setTelaAtual('clientes-form')}
+        onVoltar={() => irPara('home')}
+        onNovoCliente={() => irPara('clientes-form')}
       />
     );
   }
@@ -118,18 +149,42 @@ export default function App() {
   if (telaAtual === 'clientes-form') {
     return (
       <ClientFormScreen
-        onVoltar={() => setTelaAtual('clientes-lista')}
-        onSalvo={() => setTelaAtual('clientes-lista')}
+        onVoltar={() => irPara('clientes-lista')}
+        onSalvo={() => irPara('clientes-lista')}
       />
     );
   }
-  
-  if (telaAtual === 'os-detalhe' && osSelecionadaId) {
+
+  if (telaAtual === 'agenda') {
     return (
-      <OSDetailScreen
-        osId={osSelecionadaId}
-        onVoltar={() => setTelaAtual('os-lista')}
-        onAlterado={() => {}}
+      <AgendaScreen
+        onVoltar={() => irPara('home')}
+        onAbrirOS={(id) => {
+          setOsSelecionadaId(id);
+          irPara('os-detalhe');
+        }}
+      />
+    );
+  }
+
+  if (telaAtual === 'relatorios') {
+    return <RelatoriosScreen onVoltar={() => irPara('home')} />;
+  }
+
+  if (telaAtual === 'tecnicos-lista') {
+    return (
+      <TecnicosListScreen
+        onVoltar={() => irPara('home')}
+        onNovoTecnico={() => irPara('tecnicos-form')}
+      />
+    );
+  }
+
+  if (telaAtual === 'tecnicos-form') {
+    return (
+      <TecnicoFormScreen
+        onVoltar={() => irPara('tecnicos-lista')}
+        onSalvo={() => irPara('tecnicos-lista')}
       />
     );
   }

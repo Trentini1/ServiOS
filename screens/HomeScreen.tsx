@@ -39,6 +39,7 @@ const MENU = [
   { id: 'clientes', titulo: 'Clientes', icone: 'people-outline', cor: '#16a34a' },
   { id: 'agenda', titulo: 'Agenda', icone: 'calendar-outline', cor: '#d97706' },
   { id: 'relatorios', titulo: 'Relatórios', icone: 'bar-chart-outline', cor: '#9333ea' },
+  { id: 'tecnicos', titulo: 'Técnicos', icone: 'construct-outline', cor: '#0891b2' },
 ] as const;
 
 export default function HomeScreen({ usuario, empresa, onSair, onAbrirMenu }: Props) {
@@ -55,10 +56,11 @@ export default function HomeScreen({ usuario, empresa, onSair, onAbrirMenu }: Pr
     async function carregarResumo() {
       const ordens = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
       const clientes = (await carregar<Cliente[]>('clientes')) ?? [];
+      const hoje = new Date().toISOString().split('T')[0];
       setResumo({
         osAbertas: ordens.filter((o) => o.status === 'Aberta' || o.status === 'Em Andamento').length,
         clientes: clientes.length,
-        osConcluidas: ordens.filter((o) => o.status === 'Concluída').length,
+        osConcluidas: ordens.filter((o) => o.dataAgendada && o.dataAgendada >= hoje).length,
       });
     }
     carregarResumo();
@@ -107,7 +109,7 @@ function abrirMenu(id: string) {
           <View style={styles.resumoDivisor} />
           <View style={styles.resumoItem}>
             <Text style={styles.resumoNumero}>{resumo.osConcluidas}</Text>
-            <Text style={styles.resumoLabel}>Concluídas</Text>
+            <Text style={styles.resumoLabel}>Agendadas</Text>
           </View>
         </Animated.View>
 

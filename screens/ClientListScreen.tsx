@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   FlatList,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { carregar } from '../utils/storage';
@@ -25,15 +26,20 @@ type Props = {
 
 export default function ClientListScreen({ onVoltar, onNovoCliente }: Props) {
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [recarregando, setRecarregando] = useState(false);
 
   const carregarClientes = useCallback(async () => {
     const lista = await carregar<Cliente[]>('clientes');
     setClientes(lista ?? []);
   }, []);
 
-  useEffect(() => {
-    carregarClientes();
-  }, [carregarClientes]);
+  useEffect(() => { carregarClientes(); }, [carregarClientes]);
+
+  async function recarregar() {
+    setRecarregando(true);
+    await carregarClientes();
+    setRecarregando(false);
+  }
 
   return (
     <View style={styles.container}>
@@ -58,6 +64,14 @@ export default function ClientListScreen({ onVoltar, onNovoCliente }: Props) {
           data={clientes.slice().reverse()}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.lista}
+          refreshControl={
+            <RefreshControl
+              refreshing={recarregando}
+              onRefresh={recarregar}
+              tintColor="#16a34a"
+              colors={['#16a34a']}
+            />
+          }
           renderItem={({ item }) => (
             <View style={styles.card}>
               <View style={styles.cardIcone}>
