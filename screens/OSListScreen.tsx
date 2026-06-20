@@ -23,6 +23,7 @@ export type OrdemServico = {
 type Props = {
   onVoltar: () => void;
   onNovaOS: () => void;
+  onAbrirOS: (id: string) => void;
 };
 
 const CORES_STATUS: Record<string, string> = {
@@ -31,7 +32,7 @@ const CORES_STATUS: Record<string, string> = {
   Concluída: '#16a34a',
 };
 
-export default function OSListScreen({ onVoltar, onNovaOS }: Props) {
+export default function OSListScreen({ onVoltar, onNovaOS, onAbrirOS }: Props) {
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
 
   const carregarOrdens = useCallback(async () => {
@@ -67,7 +68,11 @@ export default function OSListScreen({ onVoltar, onNovaOS }: Props) {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.lista}
           renderItem={({ item }) => (
-            <View style={styles.card}>
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => onAbrirOS(item.id)}
+              activeOpacity={0.8}
+            >
               <View style={styles.cardTopo}>
                 <Text style={styles.cardCliente}>{item.cliente}</Text>
                 <View
@@ -91,7 +96,7 @@ export default function OSListScreen({ onVoltar, onNovaOS }: Props) {
               </Text>
               <Text style={styles.cardTipo}>{item.tipoManutencao}</Text>
               <Text style={styles.cardData}>{item.dataCriacao}</Text>
-            </View>
+            </TouchableOpacity>
           )}
         />
       )}

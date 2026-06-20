@@ -8,6 +8,7 @@ import OSFormScreen from './screens/OSFormScreen';
 import { salvar, carregar, remover } from './utils/storage';
 import ClientListScreen from './screens/ClientListScreen';
 import ClientFormScreen from './screens/ClientFormScreen';
+import OSDetailScreen from './screens/OSDetailScreen';
 
 type Empresa = {
   nome: string;
@@ -18,13 +19,14 @@ type Empresa = {
   estado: string;
 };
 
-type Tela = 'home' | 'os-lista' | 'os-form' | 'clientes-lista' | 'clientes-form';
+type Tela = 'home' | 'os-lista' | 'os-form' | 'os-detalhe' | 'clientes-lista' | 'clientes-form';
 
 export default function App() {
   const [carregandoApp, setCarregandoApp] = useState(true);
   const [usuarioLogado, setUsuarioLogado] = useState<string | null>(null);
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [telaAtual, setTelaAtual] = useState<Tela>('home');
+  const [osSelecionadaId, setOsSelecionadaId] = useState<string | null>(null);
 
   useEffect(() => {
     async function carregarDadosSalvos() {
@@ -86,6 +88,10 @@ export default function App() {
       <OSListScreen
         onVoltar={() => setTelaAtual('home')}
         onNovaOS={() => setTelaAtual('os-form')}
+        onAbrirOS={(id) => {
+          setOsSelecionadaId(id);
+          setTelaAtual('os-detalhe');
+        }}
       />
     );
   }
@@ -99,6 +105,7 @@ export default function App() {
       />
     );
   }
+
   if (telaAtual === 'clientes-lista') {
     return (
       <ClientListScreen
@@ -113,6 +120,16 @@ export default function App() {
       <ClientFormScreen
         onVoltar={() => setTelaAtual('clientes-lista')}
         onSalvo={() => setTelaAtual('clientes-lista')}
+      />
+    );
+  }
+  
+  if (telaAtual === 'os-detalhe' && osSelecionadaId) {
+    return (
+      <OSDetailScreen
+        osId={osSelecionadaId}
+        onVoltar={() => setTelaAtual('os-lista')}
+        onAlterado={() => {}}
       />
     );
   }
