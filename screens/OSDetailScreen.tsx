@@ -10,9 +10,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { carregar, salvar } from '../utils/storage';
-import type { OrdemServico } from './OSListScreen';
+import type { OrdemServico, DiaExecucao, PecaUtilizada } from './OSListScreen';
 import SignatureModal from '../components/SignatureModal';
 import FotosOS from '../components/FotosOS';
+import PeriodosExecucao from '../components/PeriodosExecucao';
+import PecasUtilizadas from '../components/PecasUtilizadas';
 import { gerarESalvarPdfOS } from '../utils/gerarPdfOS';
 
 type Empresa = {
@@ -81,11 +83,24 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
   async function salvarFotos(novasFotos: string[]) {
     if (!ordem) return;
     const lista = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
-    const novaLista = lista.map((o) =>
-      o.id === ordem.id ? { ...o, fotos: novasFotos } : o
-    );
-    await salvar('ordensServico', novaLista);
+    await salvar('ordensServico', lista.map((o) => o.id === ordem.id ? { ...o, fotos: novasFotos } : o));
     setOrdem({ ...ordem, fotos: novasFotos });
+    onAlterado();
+  }
+
+  async function salvarDiasExecucao(dias: DiaExecucao[]) {
+    if (!ordem) return;
+    const lista = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
+    await salvar('ordensServico', lista.map((o) => o.id === ordem.id ? { ...o, diasExecucao: dias } : o));
+    setOrdem({ ...ordem, diasExecucao: dias });
+    onAlterado();
+  }
+
+  async function salvarPecas(pecas: PecaUtilizada[]) {
+    if (!ordem) return;
+    const lista = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
+    await salvar('ordensServico', lista.map((o) => o.id === ordem.id ? { ...o, pecas } : o));
+    setOrdem({ ...ordem, pecas });
     onAlterado();
   }
 
@@ -260,6 +275,22 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
               </TouchableOpacity>
             ))}
           </View>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.secaoTitulo}>Períodos de execução</Text>
+          <PeriodosExecucao
+            dias={ordem.diasExecucao ?? []}
+            onChange={salvarDiasExecucao}
+          />
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.secaoTitulo}>Peças utilizadas</Text>
+          <PecasUtilizadas
+            pecas={ordem.pecas ?? []}
+            onChange={salvarPecas}
+          />
         </View>
 
         <View style={styles.card}>

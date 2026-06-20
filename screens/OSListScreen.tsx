@@ -10,6 +10,24 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { carregar } from '../utils/storage';
 
+export type PeriodoTrabalho = {
+  entrada: string;
+  saida: string;
+};
+
+export type DiaExecucao = {
+  data: string;
+  periodos: PeriodoTrabalho[];
+};
+
+export type PecaUtilizada = {
+  id: string;
+  descricao: string;
+  quantidade: string;
+  unidade: string;
+  fornecedor: string;
+};
+
 export type OrdemServico = {
   id: string;
   cliente: string;
@@ -22,6 +40,8 @@ export type OrdemServico = {
   dataCriacao: string;
   dataAgendada?: string;
   tecnicoResponsavel?: string;
+  diasExecucao?: DiaExecucao[];
+  pecas?: PecaUtilizada[];
   fotos?: string[];
   assinaturaTecnico?: string;
   assinaturaCliente?: string;
