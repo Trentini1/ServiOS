@@ -13,10 +13,30 @@ import {
   LayoutChangeEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const usuariosTeste = [
-  { nome: 'Técnico Teste', email: 'teste@servios.com', senha: '123456' },
-];
+type Usuario = { nome: string; email: string; senha: string };
+
+const CHAVE_USUARIOS = 'usuarios';
+const USUARIO_PADRAO: Usuario = { nome: 'Técnico Teste', email: 'teste@servios.com', senha: '123456' };
+
+async function carregarUsuarios(): Promise<Usuario[]> {
+  try {
+    const json = await AsyncStorage.getItem(CHAVE_USUARIOS);
+    if (json) return JSON.parse(json);
+    // Primeira execução: semente com usuário de teste
+    await AsyncStorage.setItem(CHAVE_USUARIOS, JSON.stringify([USUARIO_PADRAO]));
+    return [USUARIO_PADRAO];
+  } catch {
+    return [USUARIO_PADRAO];
+  }
+}
+
+async function salvarUsuarios(lista: Usuario[]) {
+  try {
+    await AsyncStorage.setItem(CHAVE_USUARIOS, JSON.stringify(lista));
+  } catch {}
+}
 
 type Props = {
   onLoginSuccess: (nome: string) => void;
@@ -30,6 +50,11 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [carregando, setCarregando] = useState(false);
   const [larguraToggle, setLarguraToggle] = useState(0);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+
+  useEffect(() => {
+    carregarUsuarios().then(setUsuarios);
+  }, []);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(16)).current;
@@ -38,16 +63,8 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 550,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 550,
-        useNativeDriver: true,
-      }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 550, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 550, useNativeDriver: true }),
     ]).start();
   }, []);
 
@@ -79,26 +96,24 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
     ]).start(callback);
   }
 
-  function handleLogin() {
+  async function handleLogin() {
     if (!email || !senha) {
       Alert.alert('Atenção', 'Preencha e-mail e senha.');
       return;
     }
     setCarregando(true);
-    setTimeout(() => {
-      setCarregando(false);
-      const usuario = usuariosTeste.find(
-        (u) => u.email === email && u.senha === senha
-      );
-      if (usuario) {
-        onLoginSuccess(usuario.nome);
-      } else {
-        Alert.alert('Erro', 'E-mail ou senha incorretos.');
-      }
-    }, 700);
+    const lista = await carregarUsuarios();
+    setUsuarios(lista);
+    setCarregando(false);
+    const usuario = lista.find((u) => u.email === email.trim().toLowerCase() && u.senha === senha);
+    if (usuario) {
+      onLoginSuccess(usuario.nome);
+    } else {
+      Alert.alert('Erro', 'E-mail ou senha incorretos.');
+    }
   }
 
-  function handleCadastro() {
+  async function handleCadastro() {
     if (!nome || !email || !senha || !confirmarSenha) {
       Alert.alert('Atenção', 'Preencha todos os campos.');
       return;
@@ -111,21 +126,22 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
       Alert.alert('Atenção', 'A senha precisa ter pelo menos 6 caracteres.');
       return;
     }
-    if (usuariosTeste.some((u) => u.email === email)) {
+    const emailNormalizado = email.trim().toLowerCase();
+    if (usuarios.some((u) => u.email === emailNormalizado)) {
       Alert.alert('Atenção', 'Já existe uma conta com esse e-mail.');
       return;
     }
     setCarregando(true);
-    setTimeout(() => {
-      setCarregando(false);
-      usuariosTeste.push({ nome, email, senha });
-      Alert.alert('Sucesso', 'Conta criada! Agora faça login.', [
-        { text: 'OK', onPress: () => trocarModo('login') },
-      ]);
-      setNome('');
-      setSenha('');
-      setConfirmarSenha('');
-    }, 700);
+    const novaLista = [...usuarios, { nome, email: emailNormalizado, senha }];
+    await salvarUsuarios(novaLista);
+    setUsuarios(novaLista);
+    setCarregando(false);
+    Alert.alert('Sucesso', 'Conta criada! Agora faça login.', [
+      { text: 'OK', onPress: () => trocarModo('login') },
+    ]);
+    setNome('');
+    setSenha('');
+    setConfirmarSenha('');
   }
 
   const metadeToggle = larguraToggle / 2;

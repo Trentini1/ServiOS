@@ -12,12 +12,15 @@ import { carregar } from '../utils/storage';
 export type OrdemServico = {
   id: string;
   cliente: string;
+  clienteTelefone?: string;
   motor: string;
   posicao: string;
   tipoManutencao: string;
   descricao: string;
   status: 'Aberta' | 'Em Andamento' | 'Concluída';
   dataCriacao: string;
+  assinaturaTecnico?: string;
+  assinaturaCliente?: string;
 };
 
 type Props = {

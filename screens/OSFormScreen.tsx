@@ -73,6 +73,7 @@ export default function OSFormScreen({ onVoltar, onSalvo, onIrParaClientes }: Pr
     const novaOS: OrdemServico = {
       id: Date.now().toString(),
       cliente: clienteSelecionado.nome,
+      clienteTelefone: clienteSelecionado.telefone,
       motor,
       posicao,
       tipoManutencao,

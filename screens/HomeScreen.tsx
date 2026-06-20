@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,9 @@ import {
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { carregar } from '../utils/storage';
+import type { OrdemServico } from './OSListScreen';
+import type { Cliente } from './ClientListScreen';
 
 type Empresa = {
   nome: string;
@@ -16,6 +19,12 @@ type Empresa = {
   segmento: string;
   cidade: string;
   estado: string;
+};
+
+type Resumo = {
+  osAbertas: number;
+  clientes: number;
+  osConcluidas: number;
 };
 
 type Props = {
@@ -35,12 +44,24 @@ const MENU = [
 export default function HomeScreen({ usuario, empresa, onSair, onAbrirMenu }: Props) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(16)).current;
+  const [resumo, setResumo] = useState<Resumo>({ osAbertas: 0, clientes: 0, osConcluidas: 0 });
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
     ]).start();
+
+    async function carregarResumo() {
+      const ordens = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
+      const clientes = (await carregar<Cliente[]>('clientes')) ?? [];
+      setResumo({
+        osAbertas: ordens.filter((o) => o.status === 'Aberta' || o.status === 'Em Andamento').length,
+        clientes: clientes.length,
+        osConcluidas: ordens.filter((o) => o.status === 'Concluída').length,
+      });
+    }
+    carregarResumo();
   }, []);
 
 function abrirMenu(id: string) {
@@ -75,18 +96,18 @@ function abrirMenu(id: string) {
           ]}
         >
           <View style={styles.resumoItem}>
-            <Text style={styles.resumoNumero}>0</Text>
+            <Text style={styles.resumoNumero}>{resumo.osAbertas}</Text>
             <Text style={styles.resumoLabel}>OS abertas</Text>
           </View>
           <View style={styles.resumoDivisor} />
           <View style={styles.resumoItem}>
-            <Text style={styles.resumoNumero}>0</Text>
+            <Text style={styles.resumoNumero}>{resumo.clientes}</Text>
             <Text style={styles.resumoLabel}>Clientes</Text>
           </View>
           <View style={styles.resumoDivisor} />
           <View style={styles.resumoItem}>
-            <Text style={styles.resumoNumero}>0</Text>
-            <Text style={styles.resumoLabel}>Agendados</Text>
+            <Text style={styles.resumoNumero}>{resumo.osConcluidas}</Text>
+            <Text style={styles.resumoLabel}>Concluídas</Text>
           </View>
         </Animated.View>
 
