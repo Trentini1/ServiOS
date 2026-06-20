@@ -6,6 +6,8 @@ import HomeScreen from './screens/HomeScreen';
 import OSListScreen from './screens/OSListScreen';
 import OSFormScreen from './screens/OSFormScreen';
 import { salvar, carregar, remover } from './utils/storage';
+import ClientListScreen from './screens/ClientListScreen';
+import ClientFormScreen from './screens/ClientFormScreen';
 
 type Empresa = {
   nome: string;
@@ -16,7 +18,7 @@ type Empresa = {
   estado: string;
 };
 
-type Tela = 'home' | 'os-lista' | 'os-form';
+type Tela = 'home' | 'os-lista' | 'os-form' | 'clientes-lista' | 'clientes-form';
 
 export default function App() {
   const [carregandoApp, setCarregandoApp] = useState(true);
@@ -57,7 +59,10 @@ export default function App() {
     if (id === 'os') {
       setTelaAtual('os-lista');
     }
-    // 'clientes', 'agenda', 'relatorios' entram nas próximas partes
+    if (id === 'clientes') {
+      setTelaAtual('clientes-lista');
+    }
+    // 'agenda', 'relatorios' entram nas próximas partes
   }
 
   if (carregandoApp) {
@@ -90,6 +95,24 @@ export default function App() {
       <OSFormScreen
         onVoltar={() => setTelaAtual('os-lista')}
         onSalvo={() => setTelaAtual('os-lista')}
+        onIrParaClientes={() => setTelaAtual('clientes-form')}
+      />
+    );
+  }
+  if (telaAtual === 'clientes-lista') {
+    return (
+      <ClientListScreen
+        onVoltar={() => setTelaAtual('home')}
+        onNovoCliente={() => setTelaAtual('clientes-form')}
+      />
+    );
+  }
+
+  if (telaAtual === 'clientes-form') {
+    return (
+      <ClientFormScreen
+        onVoltar={() => setTelaAtual('clientes-lista')}
+        onSalvo={() => setTelaAtual('clientes-lista')}
       />
     );
   }

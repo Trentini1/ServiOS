@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,10 +10,13 @@ import {
   Alert,
   Animated,
   ScrollView,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { carregar, salvar } from '../utils/storage';
 import type { OrdemServico } from './OSListScreen';
+import type { Cliente } from './ClientListScreen';
 
 const POSICOES = ['BB', 'BE', 'Vante', 'Ré', 'Outro'];
 const TIPOS = ['Preventiva', 'Corretiva', 'Revisão', 'Instalação'];
@@ -21,10 +24,14 @@ const TIPOS = ['Preventiva', 'Corretiva', 'Revisão', 'Instalação'];
 type Props = {
   onVoltar: () => void;
   onSalvo: () => void;
+  onIrParaClientes: () => void;
 };
 
-export default function OSFormScreen({ onVoltar, onSalvo }: Props) {
-  const [cliente, setCliente] = useState('');
+export default function OSFormScreen({ onVoltar, onSalvo, onIrParaClientes }: Props) {
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(null);
+  const [modalAberto, setModalAberto] = useState(false);
+
   const [motor, setMotor] = useState('');
   const [posicao, setPosicao] = useState('');
   const [tipoManutencao, setTipoManutencao] = useState('');
@@ -34,7 +41,13 @@ export default function OSFormScreen({ onVoltar, onSalvo }: Props) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleBotao = useRef(new Animated.Value(1)).current;
 
+  const carregarClientes = useCallback(async () => {
+    const lista = await carregar<Cliente[]>('clientes');
+    setClientes(lista ?? []);
+  }, []);
+
   useEffect(() => {
+    carregarClientes();
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 400,
@@ -50,8 +63,8 @@ export default function OSFormScreen({ onVoltar, onSalvo }: Props) {
   }
 
   async function handleSalvar() {
-    if (!cliente || !motor || !posicao || !tipoManutencao) {
-      Alert.alert('Atenção', 'Preencha cliente, motor, posição e tipo de manutenção.');
+    if (!clienteSelecionado || !motor || !posicao || !tipoManutencao) {
+      Alert.alert('Atenção', 'Selecione o cliente e preencha motor, posição e tipo de manutenção.');
       return;
     }
 
@@ -59,7 +72,7 @@ export default function OSFormScreen({ onVoltar, onSalvo }: Props) {
 
     const novaOS: OrdemServico = {
       id: Date.now().toString(),
-      cliente,
+      cliente: clienteSelecionado.nome,
       motor,
       posicao,
       tipoManutencao,
@@ -74,6 +87,11 @@ export default function OSFormScreen({ onVoltar, onSalvo }: Props) {
 
     setSalvando(false);
     onSalvo();
+  }
+
+  function selecionarCliente(cliente: Cliente) {
+    setClienteSelecionado(cliente);
+    setModalAberto(false);
   }
 
   return (
@@ -97,16 +115,36 @@ export default function OSFormScreen({ onVoltar, onSalvo }: Props) {
         <Animated.View style={{ opacity: fadeAnim }}>
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Cliente</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="business-outline" size={18} color="#64748b" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Nome do cliente"
-                placeholderTextColor="#475569"
-                value={cliente}
-                onChangeText={setCliente}
-              />
-            </View>
+
+            {clientes.length === 0 ? (
+              <TouchableOpacity
+                style={styles.avisoSemCliente}
+                onPress={onIrParaClientes}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="alert-circle-outline" size={18} color="#d97706" />
+                <Text style={styles.avisoTexto}>
+                  Nenhum cliente cadastrado. Toque aqui para cadastrar o primeiro.
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.seletorWrapper}
+                onPress={() => setModalAberto(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="business-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                <Text
+                  style={[
+                    styles.seletorTexto,
+                    !clienteSelecionado && styles.seletorPlaceholder,
+                  ]}
+                >
+                  {clienteSelecionado ? clienteSelecionado.nome : 'Selecionar cliente'}
+                </Text>
+                <Ionicons name="chevron-down" size={18} color="#64748b" />
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.inputGroup}>
@@ -192,6 +230,50 @@ export default function OSFormScreen({ onVoltar, onSalvo }: Props) {
           </Animated.View>
         </Animated.View>
       </ScrollView>
+
+      {/* Modal de seleção de cliente */}
+      <Modal
+        visible={modalAberto}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setModalAberto(false)}
+      >
+        <View style={styles.modalFundo}>
+          <View style={styles.modalConteudo}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitulo}>Selecionar Cliente</Text>
+              <TouchableOpacity onPress={() => setModalAberto(false)}>
+                <Ionicons name="close" size={24} color="#94a3b8" />
+              </TouchableOpacity>
+            </View>
+
+            <FlatList
+              data={clientes}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.modalItem}
+                  onPress={() => selecionarCliente(item)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.modalItemIcone}>
+                    <Ionicons name="business" size={18} color="#16a34a" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.modalItemNome}>{item.nome}</Text>
+                    <Text style={styles.modalItemDetalhe}>
+                      {item.cidade}/{item.estado}
+                    </Text>
+                  </View>
+                  {clienteSelecionado?.id === item.id && (
+                    <Ionicons name="checkmark-circle" size={20} color="#2563eb" />
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -306,5 +388,90 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 15,
     fontWeight: '600',
+  },
+  seletorWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#111827',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#1f2937',
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+  },
+  seletorTexto: {
+    flex: 1,
+    color: '#ffffff',
+    fontSize: 15,
+  },
+  seletorPlaceholder: {
+    color: '#475569',
+  },
+  avisoSemCliente: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#d9770622',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#d9770655',
+    padding: 14,
+  },
+  avisoTexto: {
+    color: '#d97706',
+    fontSize: 13,
+    marginLeft: 8,
+    flex: 1,
+  },
+  modalFundo: {
+    flex: 1,
+    backgroundColor: '#00000099',
+    justifyContent: 'flex-end',
+  },
+  modalConteudo: {
+    backgroundColor: '#111827',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '70%',
+    paddingBottom: 30,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1f2937',
+  },
+  modalTitulo: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  modalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1f2937',
+  },
+  modalItemIcone: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#16a34a22',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  modalItemNome: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalItemDetalhe: {
+    color: '#64748b',
+    fontSize: 12,
+    marginTop: 2,
   },
 });
