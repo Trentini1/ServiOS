@@ -18,7 +18,7 @@ type Empresa = {
   endereco?: string; cidade?: string; estado?: string; segmento?: string;
 };
 
-type Props = { osId: string; onVoltar: () => void; onAlterado: () => void };
+type Props = { osId: string; onVoltar: () => void; onAlterado: () => void; onEditarOS?: () => void };
 
 const STATUS_OPCOES: OrdemServico['status'][] = ['Aberta', 'Em Andamento', 'Concluída'];
 const CORES_STATUS: Record<string, string> = {
@@ -28,7 +28,7 @@ const ICONES_STATUS: Record<string, string> = {
   Aberta: 'radio-button-on-outline', 'Em Andamento': 'sync-outline', Concluída: 'checkmark-circle-outline',
 };
 
-export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
+export default function OSDetailScreen({ osId, onVoltar, onAlterado, onEditarOS }: Props) {
   const tema = useThema();
   const pdfTemaPadrao = usePdfTema();
   const styles = useMemo(() => criarEstilos(tema), [tema]);
@@ -120,6 +120,14 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
         </TouchableOpacity>
         <Text style={styles.headerTitulo}>Detalhes da OS</Text>
         <View style={styles.headerAcoes}>
+          {onEditarOS && (
+            <TouchableOpacity
+              onPress={onEditarOS}
+              style={[styles.iconBtn, { backgroundColor: tema.primario + '22', borderColor: tema.primario + '44' }]}
+            >
+              <Ionicons name="create-outline" size={18} color={tema.primario} />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             onPress={exportarPdf}
             style={[styles.iconBtn, { backgroundColor: tema.primario + '22', borderColor: tema.primario + '44' }, gerandoPdf && { opacity: 0.5 }]}
@@ -161,6 +169,22 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
 
         {/* Informações técnicas */}
         <SecaoCard titulo="Informações Técnicas" icone="construct-outline" tema={tema}>
+          {/* Prioridade badge */}
+          {!!ordem.prioridade && (
+            <View style={styles.prioridadeRow}>
+              {[
+                { v: 'Baixa', c: '#16a34a' }, { v: 'Normal', c: tema.primario },
+                { v: 'Alta', c: '#d97706' }, { v: 'Urgente', c: '#dc2626' },
+              ].map(({ v, c }) => {
+                const ativa = ordem.prioridade === v;
+                return (
+                  <View key={v} style={[styles.prioBadge, { borderColor: ativa ? c : tema.borda, backgroundColor: ativa ? c + '22' : 'transparent' }]}>
+                    <Text style={[styles.prioTexto, { color: ativa ? c : tema.textoFraco, fontWeight: ativa ? '700' : '400' }]}>{v}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          )}
           <View style={styles.infoGrid}>
             {[
               { label: 'Motor / Equipamento', valor: ordem.motor,          icone: 'cog-outline'         },
@@ -168,6 +192,19 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
               { label: 'Tipo de Manutenção',   valor: ordem.tipoManutencao, icone: 'build-outline'       },
               ordem.tecnicoResponsavel ? { label: 'Técnico Responsável', valor: ordem.tecnicoResponsavel, icone: 'person-outline' } : null,
               ordem.dataAgendada       ? { label: 'Data Agendada',       valor: ordem.dataAgendada.split('-').reverse().join('/'), icone: 'calendar-outline' } : null,
+              ordem.numeroOS  ? { label: 'Número OS',           valor: ordem.numeroOS,  icone: 'bookmark-outline' } : null,
+              ordem.tipoVeiculo ? { label: 'Tipo de Veículo',   valor: ordem.tipoVeiculo, icone: 'car-outline' } : null,
+              ordem.modelo    ? { label: 'Modelo',              valor: ordem.modelo,    icone: 'cube-outline'    } : null,
+              ordem.ano       ? { label: 'Ano',                 valor: ordem.ano,       icone: 'calendar-number-outline' } : null,
+              ordem.placa     ? { label: 'Placa',               valor: ordem.placa,     icone: 'barcode-outline' } : null,
+              ordem.horimetro ? { label: 'Horímetro',           valor: ordem.horimetro, icone: 'timer-outline'   } : null,
+              ordem.tempoEstimado ? { label: 'Tempo Estimado',  valor: ordem.tempoEstimado, icone: 'time-outline' } : null,
+              ordem.valorEstimado ? { label: 'Valor Estimado',  valor: ordem.valorEstimado, icone: 'cash-outline' } : null,
+              ordem.formaPagamento ? { label: 'Pagamento',      valor: ordem.formaPagamento, icone: 'card-outline' } : null,
+              ordem.solicitante ? { label: 'Solicitante',       valor: ordem.solicitante, icone: 'person-add-outline' } : null,
+              ordem.contatoSolicitante ? { label: 'Contato',    valor: ordem.contatoSolicitante, icone: 'call-outline' } : null,
+              ordem.enderecoServico ? { label: 'Local do Serviço', valor: ordem.enderecoServico, icone: 'map-outline' } : null,
+              ordem.seguro    ? { label: 'Seguro',              valor: ordem.seguro,    icone: 'shield-outline'  } : null,
             ].filter(Boolean).map((item: any, i) => (
               <View key={i} style={[styles.infoItem, i % 2 === 1 && { borderLeftWidth: 1, borderLeftColor: tema.borda }]}>
                 <View style={styles.infoItemHeader}>
@@ -178,10 +215,22 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
               </View>
             ))}
           </View>
+          {!!ordem.garantia && (
+            <View style={[styles.garantiaBadge, { backgroundColor: '#16a34a18', borderColor: '#16a34a44' }]}>
+              <Ionicons name="shield-checkmark-outline" size={14} color="#16a34a" />
+              <Text style={[styles.garantiaTexto, { color: '#16a34a' }]}>Em Garantia</Text>
+            </View>
+          )}
           {!!ordem.descricao && (
             <View style={[styles.descricaoBox, { backgroundColor: tema.fundo, borderColor: tema.borda }]}>
               <Text style={[styles.descricaoLabel, { color: tema.textoMuted }]}>Descrição do Serviço</Text>
               <Text style={[styles.descricaoTexto, { color: tema.textoSec }]}>{ordem.descricao}</Text>
+            </View>
+          )}
+          {!!ordem.observacoesInternas && (
+            <View style={[styles.descricaoBox, { backgroundColor: '#d9770610', borderColor: '#d9770633', marginTop: 8 }]}>
+              <Text style={[styles.descricaoLabel, { color: '#d97706' }]}>Observações Internas</Text>
+              <Text style={[styles.descricaoTexto, { color: tema.textoSec }]}>{ordem.observacoesInternas}</Text>
             </View>
           )}
         </SecaoCard>
@@ -363,6 +412,14 @@ function criarEstilos(t: AppTema) {
     },
     statusPillTexto: { fontSize: 11, fontWeight: '700' },
 
+    prioridadeRow: { flexDirection: 'row', gap: 6, marginBottom: 12, flexWrap: 'wrap' },
+    prioBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
+    prioTexto: { fontSize: 11 },
+    garantiaBadge: {
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      paddingHorizontal: 10, paddingVertical: 7, borderRadius: 8, borderWidth: 1, marginTop: 10, alignSelf: 'flex-start',
+    },
+    garantiaTexto: { fontSize: 12, fontWeight: '600' },
     infoGrid: { flexDirection: 'row', flexWrap: 'wrap' },
     infoItem: { width: '50%', paddingVertical: 10, paddingHorizontal: 2 },
     infoItemHeader: { flexDirection: 'row', alignItems: 'center', gap: 4 },

@@ -33,8 +33,8 @@ type Empresa = {
 type Usuario = { nome: string; email: string; senha: string };
 
 type Tela =
-  | 'home' | 'os-lista' | 'os-form' | 'os-detalhe'
-  | 'clientes-lista' | 'clientes-form'
+  | 'home' | 'os-lista' | 'os-form' | 'os-detalhe' | 'os-editar'
+  | 'clientes-lista' | 'clientes-form' | 'clientes-editar'
   | 'agenda' | 'relatorios'
   | 'tecnicos-lista' | 'tecnicos-form' | 'tecnico-editar'
   | 'configuracoes' | 'tema-app' | 'tema-pdf'
@@ -48,6 +48,7 @@ function AppInner() {
   const [telaAnterior, setTelaAnterior]   = useState<Tela>('home');
   const [osSelecionadaId, setOsSelecionadaId]     = useState<string | null>(null);
   const [tecnicoEditandoId, setTecnicoEditandoId] = useState<string | null>(null);
+  const [clienteEditandoId, setClienteEditandoId] = useState<string | null>(null);
   const [dataAgendadaOS, setDataAgendadaOS]       = useState<string | undefined>(undefined);
   const [mostrarPromo, setMostrarPromo]           = useState(false);
 
@@ -134,12 +135,24 @@ function AppInner() {
     );
   }
 
+  if (telaAtual === 'os-editar' && osSelecionadaId) {
+    return (
+      <OSFormScreen
+        onVoltar={() => irPara('os-detalhe')}
+        onSalvo={() => irPara('os-detalhe')}
+        onIrParaClientes={() => irPara('clientes-form')}
+        osId={osSelecionadaId}
+      />
+    );
+  }
+
   if (telaAtual === 'os-detalhe' && osSelecionadaId) {
     return (
       <OSDetailScreen
         osId={osSelecionadaId}
         onVoltar={() => irPara(telaAnterior === 'agenda' ? 'agenda' : 'os-lista')}
         onAlterado={() => {}}
+        onEditarOS={() => irPara('os-editar')}
       />
     );
   }
@@ -149,6 +162,7 @@ function AppInner() {
       <ClientListScreen
         onVoltar={() => irPara('home')}
         onNovoCliente={() => irPara('clientes-form')}
+        onEditarCliente={(id) => { setClienteEditandoId(id); irPara('clientes-editar'); }}
       />
     );
   }
@@ -158,6 +172,16 @@ function AppInner() {
       <ClientFormScreen
         onVoltar={() => irPara('clientes-lista')}
         onSalvo={() => irPara('clientes-lista')}
+      />
+    );
+  }
+
+  if (telaAtual === 'clientes-editar' && clienteEditandoId) {
+    return (
+      <ClientFormScreen
+        onVoltar={() => { setClienteEditandoId(null); irPara('clientes-lista'); }}
+        onSalvo={() => { setClienteEditandoId(null); irPara('clientes-lista'); }}
+        clienteId={clienteEditandoId}
       />
     );
   }

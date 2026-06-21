@@ -9,7 +9,7 @@ export type Cliente = {
   id: string; nome: string; cnpjCpf: string; telefone: string; cidade: string; estado: string;
 };
 
-type Props = { onVoltar: () => void; onNovoCliente: () => void };
+type Props = { onVoltar: () => void; onNovoCliente: () => void; onEditarCliente: (id: string) => void };
 
 function iniciais(nome: string): string {
   return nome.split(' ').slice(0, 2).map((p) => p[0]).join('').toUpperCase();
@@ -21,7 +21,7 @@ function corAvatar(id: string): string {
   return CORES_AVATAR[soma % CORES_AVATAR.length];
 }
 
-export default function ClientListScreen({ onVoltar, onNovoCliente }: Props) {
+export default function ClientListScreen({ onVoltar, onNovoCliente, onEditarCliente }: Props) {
   const tema = useThema();
   const styles = useMemo(() => criarEstilos(tema), [tema]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -129,7 +129,11 @@ export default function ClientListScreen({ onVoltar, onNovoCliente }: Props) {
                   <View style={[styles.separadorLinha, { backgroundColor: tema.borda }]} />
                 </View>
               )}
-              <View style={[styles.card, { backgroundColor: tema.card, borderColor: tema.borda }]}>
+              <TouchableOpacity
+                style={[styles.card, { backgroundColor: tema.card, borderColor: tema.borda }]}
+                onPress={() => onEditarCliente(item.id)}
+                activeOpacity={0.8}
+              >
                 <View style={[styles.avatar, { backgroundColor: cor + '22' }]}>
                   <Text style={[styles.avatarTexto, { color: cor }]}>{iniciais(item.nome)}</Text>
                 </View>
@@ -149,10 +153,8 @@ export default function ClientListScreen({ onVoltar, onNovoCliente }: Props) {
                     )}
                   </View>
                 </View>
-                <View style={[styles.tagChip, { backgroundColor: cor + '15', borderColor: cor + '33' }]}>
-                  <Ionicons name="business" size={12} color={cor} />
-                </View>
-              </View>
+                <Ionicons name="create-outline" size={16} color={tema.textoFraco} />
+              </TouchableOpacity>
             </>
           );
         }}

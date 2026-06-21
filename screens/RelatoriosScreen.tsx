@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   ScrollView,
   RefreshControl,
+  Share,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { carregar } from '../utils/storage';
@@ -116,6 +118,38 @@ export default function RelatoriosScreen({ onVoltar }: Props) {
     .sort((a, b) => b.qty - a.qty)
     .slice(0, 5);
 
+  async function compartilharRelatorio() {
+    try {
+      const linhas: string[] = [
+        `📊 RELATÓRIO SERVIOS — ${filtro.toUpperCase()}`,
+        `Gerado em ${new Date().toLocaleDateString('pt-BR')}`,
+        '',
+        '── RESUMO ──────────────────',
+        `Total de OS: ${total}`,
+        `Concluídas:  ${porStatus.Concluída}`,
+        `Em Andamento: ${porStatus['Em Andamento']}`,
+        `Abertas:     ${porStatus.Aberta}`,
+        `Clientes:    ${clientes.length}`,
+      ];
+
+      if (porTipo.length > 0) {
+        linhas.push('', '── POR TIPO ─────────────────');
+        porTipo.forEach(({ tipo, qty }) => linhas.push(`${tipo}: ${qty}`));
+      }
+
+      if (porCliente.length > 0) {
+        linhas.push('', '── TOP CLIENTES ─────────────');
+        porCliente.forEach(({ nome, qty }) => linhas.push(`${nome}: ${qty} OS`));
+      }
+
+      linhas.push('', '── gerado pelo ServiOS ──────');
+
+      await Share.share({ message: linhas.join('\n') });
+    } catch {
+      Alert.alert('Erro', 'Não foi possível compartilhar o relatório.');
+    }
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -126,7 +160,13 @@ export default function RelatoriosScreen({ onVoltar }: Props) {
           <Text style={styles.titulo}>Relatórios</Text>
           <Text style={[styles.subtitulo, { color: tema.textoMuted }]}>{total} OS no período</Text>
         </View>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity
+          onPress={compartilharRelatorio}
+          style={[styles.voltarBotao, { backgroundColor: tema.primario + '22', borderColor: tema.primario + '44' }]}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="share-outline" size={20} color={tema.primario} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, RefreshControl, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { carregar } from '../utils/storage';
 import { useThema } from '../contexts/ThemeContext';
@@ -35,6 +35,7 @@ export default function TecnicosListScreen({ onVoltar, onNovoTecnico, onEditarTe
   const tema   = useThema();
   const styles = useMemo(() => criarEstilos(tema), [tema]);
   const [tecnicos, setTecnicos]   = useState<Tecnico[]>([]);
+  const [busca, setBusca]         = useState('');
   const [recarregando, setRecarregando] = useState(false);
 
   const carregarTecnicos = useCallback(async () => {
@@ -48,6 +49,14 @@ export default function TecnicosListScreen({ onVoltar, onNovoTecnico, onEditarTe
     await carregarTecnicos();
     setRecarregando(false);
   }
+
+  const tecnicosFiltrados = useMemo(() => {
+    if (!busca.trim()) return tecnicos;
+    const q = busca.toLowerCase();
+    return tecnicos.filter((t) =>
+      t.nome.toLowerCase().includes(q) || t.cargo.toLowerCase().includes(q)
+    );
+  }, [tecnicos, busca]);
 
   return (
     <View style={styles.container}>
@@ -68,10 +77,29 @@ export default function TecnicosListScreen({ onVoltar, onNovoTecnico, onEditarTe
         </TouchableOpacity>
       </View>
 
+      {tecnicos.length > 0 && (
+        <View style={[styles.buscaBox, { backgroundColor: tema.inputFundo, borderColor: tema.borda }]}>
+          <Ionicons name="search-outline" size={17} color={tema.textoMuted} />
+          <TextInput
+            style={[styles.buscaInput, { color: tema.texto }]}
+            placeholder="Buscar por nome ou cargo..."
+            placeholderTextColor={tema.textoFraco}
+            value={busca}
+            onChangeText={setBusca}
+            autoCapitalize="none"
+          />
+          {busca.length > 0 && (
+            <TouchableOpacity onPress={() => setBusca('')}>
+              <Ionicons name="close-circle" size={16} color={tema.textoMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
       <FlatList
-        data={tecnicos}
+        data={tecnicosFiltrados}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={[styles.lista, tecnicos.length === 0 && styles.listaVazia]}
+        contentContainerStyle={[styles.lista, tecnicosFiltrados.length === 0 && styles.listaVazia]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={recarregando} onRefresh={recarregar}
@@ -82,9 +110,11 @@ export default function TecnicosListScreen({ onVoltar, onNovoTecnico, onEditarTe
             <View style={[styles.vazioIcone, { backgroundColor: tema.card, borderColor: tema.borda }]}>
               <Ionicons name="construct-outline" size={36} color={tema.textoFraco} />
             </View>
-            <Text style={[styles.vazioTitulo, { color: tema.textoSec }]}>Nenhum técnico cadastrado</Text>
+            <Text style={[styles.vazioTitulo, { color: tema.textoSec }]}>
+              {busca ? 'Nenhum resultado' : 'Nenhum técnico cadastrado'}
+            </Text>
             <Text style={[styles.vazioTexto, { color: tema.textoFraco }]}>
-              Toque no + para cadastrar o primeiro membro da equipe.
+              {busca ? 'Tente um termo diferente.' : 'Toque no + para cadastrar o primeiro membro da equipe.'}
             </Text>
           </View>
         }
@@ -140,6 +170,11 @@ function criarEstilos(t: AppTema) {
     iconBtn: { width: 40, height: 40, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
     titulo: { color: t.texto, fontSize: 18, fontWeight: '800', letterSpacing: -0.4 },
     subtitulo: { fontSize: 12, marginTop: 1 },
+    buscaBox: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      marginHorizontal: 20, marginBottom: 14, borderRadius: 13, borderWidth: 1, paddingHorizontal: 13,
+    },
+    buscaInput: { flex: 1, fontSize: 14, paddingVertical: 11 },
     lista: { paddingHorizontal: 20, paddingBottom: 100 },
     listaVazia: { flexGrow: 1 },
     vazio: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, gap: 8, paddingTop: 60 },

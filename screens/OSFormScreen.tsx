@@ -38,9 +38,11 @@ type Props = {
   onSalvo: () => void;
   onIrParaClientes: () => void;
   dataAgendadaInicial?: string;
+  osId?: string;
 };
 
-export default function OSFormScreen({ onVoltar, onSalvo, onIrParaClientes, dataAgendadaInicial }: Props) {
+export default function OSFormScreen({ onVoltar, onSalvo, onIrParaClientes, dataAgendadaInicial, osId }: Props) {
+  const modoEdicao = !!osId;
   const tema   = useThema();
   const styles = useMemo(() => criarEstilos(tema), [tema]);
 
@@ -83,19 +85,58 @@ export default function OSFormScreen({ onVoltar, onSalvo, onIrParaClientes, data
   useEffect(() => {
     Animated.timing(fade, { toValue: 1, duration: 400, useNativeDriver: true }).start();
     (async () => {
-      const [cls, tecs, cfg] = await Promise.all([
+      const [cls, tecs, cfg, ordensLista] = await Promise.all([
         carregar<Cliente[]>('clientes'),
         carregar<Tecnico[]>('tecnicos'),
         carregar<CampoConfig[]>('camposOS'),
+        carregar<OrdemServico[]>('ordensServico'),
       ]);
-      setClientes(cls ?? []);
-      setTecnicos(tecs ?? []);
+      const clsLista = cls ?? [];
+      const tecsLista = tecs ?? [];
+      setClientes(clsLista);
+      setTecnicos(tecsLista);
       if (cfg && cfg.length > 0) {
         const merged = CAMPOS_PADRAO.map((p) => {
           const s = cfg.find((c) => c.id === p.id);
           return s ? { ...p, ativo: s.ativo } : p;
         });
         setCampos(merged);
+      }
+      // Se for edição, preenche os campos com os dados existentes
+      if (osId && ordensLista) {
+        const os = ordensLista.find((o) => o.id === osId);
+        if (os) {
+          const cli = clsLista.find((c) => c.nome === os.cliente);
+          if (cli) setClienteSel(cli);
+          setMotor(os.motor ?? '');
+          setTipoManutencao(os.tipoManutencao ?? '');
+          setPosicao(os.posicao ?? '');
+          setDescricao(os.descricao ?? '');
+          setPrioridade((os as any).prioridade ?? 'Normal');
+          setGarantia((os as any).garantia ?? false);
+          setTempoEstimado((os as any).tempoEstimado ?? '');
+          setNumeroOS((os as any).numeroOS ?? '');
+          setModelo((os as any).modelo ?? '');
+          setAno((os as any).ano ?? '');
+          setPlaca((os as any).placa ?? '');
+          setHorimetro((os as any).horimetro ?? '');
+          setValorEstimado((os as any).valorEstimado ?? '');
+          setFormaPagamento((os as any).formaPagamento ?? '');
+          setSolicitante((os as any).solicitante ?? '');
+          setContatoSolicitante((os as any).contatoSolicitante ?? '');
+          setEnderecoServico((os as any).enderecoServico ?? '');
+          setObservacoesInternas((os as any).observacoesInternas ?? '');
+          setTipoVeiculo((os as any).tipoVeiculo ?? '');
+          setSeguro((os as any).seguro ?? '');
+          if (os.dataAgendada) {
+            const partes = os.dataAgendada.split('-');
+            setDataAgendada(`${partes[2]}/${partes[1]}/${partes[0]}`);
+          }
+          if (os.tecnicoResponsavel) {
+            const tec = tecsLista.find((t) => t.nome === os.tecnicoResponsavel);
+            if (tec) setTecnicoSel(tec);
+          }
+        }
       }
     })();
   }, []);
@@ -145,8 +186,15 @@ export default function OSFormScreen({ onVoltar, onSalvo, onIrParaClientes, data
       seguro: campoAtivo('seguro') && seguro ? seguro : undefined,
     };
     const lista = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
-    lista.push(novaOS);
-    await salvar('ordensServico', lista);
+    if (modoEdicao) {
+      const listaAtualizada = lista.map((o) =>
+        o.id === osId ? { ...o, ...novaOS, id: o.id, dataCriacao: o.dataCriacao, status: o.status } : o
+      );
+      await salvar('ordensServico', listaAtualizada);
+    } else {
+      lista.push(novaOS);
+      await salvar('ordensServico', lista);
+    }
     setSalvando(false);
     onSalvo();
   }
@@ -277,7 +325,7 @@ export default function OSFormScreen({ onVoltar, onSalvo, onIrParaClientes, data
           <Ionicons name="arrow-back" size={20} color={tema.texto} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.titulo, { color: tema.texto }]}>Nova OS</Text>
+          <Text style={[styles.titulo, { color: tema.texto }]}>{modoEdicao ? 'Editar OS' : 'Nova OS'}</Text>
           <Text style={[styles.subtitulo, { color: tema.textoMuted }]}>Ordem de Serviço</Text>
         </View>
         <View style={[styles.osNumBadge, { backgroundColor: tema.primario + '20', borderColor: tema.primario + '40' }]}>
@@ -520,7 +568,7 @@ export default function OSFormScreen({ onVoltar, onSalvo, onIrParaClientes, data
                 ? <Text style={styles.salvarBtnTexto}>Salvando...</Text>
                 : <>
                     <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                    <Text style={styles.salvarBtnTexto}>Salvar Ordem de Serviço</Text>
+                    <Text style={styles.salvarBtnTexto}>{modoEdicao ? 'Salvar Alterações' : 'Salvar Ordem de Serviço'}</Text>
                   </>
               }
             </TouchableOpacity>
