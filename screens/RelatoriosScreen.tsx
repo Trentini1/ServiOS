@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { carregar } from '../utils/storage';
 import type { OrdemServico } from './OSListScreen';
 import type { Cliente } from './ClientListScreen';
+import { useThema } from '../contexts/ThemeContext';
+import { AppTema } from '../utils/temas';
 
 type Props = {
   onVoltar: () => void;
@@ -60,14 +62,14 @@ function BarraProgresso({ valor, total, cor }: { valor: number; total: number; c
 
 const barraStyles = StyleSheet.create({
   container: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 6 },
-  fundo: {
-    flex: 1, height: 6, borderRadius: 3, backgroundColor: '#1f2937', overflow: 'hidden',
-  },
+  fundo: { flex: 1, height: 6, borderRadius: 3, backgroundColor: '#1f293744', overflow: 'hidden' },
   preenchimento: { height: '100%', borderRadius: 3 },
   pct: { fontSize: 11, fontWeight: '700', minWidth: 32, textAlign: 'right' },
 });
 
 export default function RelatoriosScreen({ onVoltar }: Props) {
+  const tema = useThema();
+  const styles = useMemo(() => criarEstilos(tema), [tema]);
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [filtro, setFiltro] = useState<Filtro>('Este mês');
@@ -232,48 +234,50 @@ export default function RelatoriosScreen({ onVoltar }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0b1220' },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16,
-  },
-  voltarBotao: {
-    width: 36, height: 36, borderRadius: 10, backgroundColor: '#111827',
-    borderWidth: 1, borderColor: '#1f2937', alignItems: 'center', justifyContent: 'center',
-  },
-  titulo: { color: '#ffffff', fontSize: 17, fontWeight: '700' },
-  scroll: { padding: 16, paddingBottom: 40 },
-  filtrosRow: { gap: 8, paddingBottom: 16 },
-  filtroChip: {
-    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-    backgroundColor: '#111827', borderWidth: 1, borderColor: '#1f2937',
-  },
-  filtroChipAtivo: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
-  filtroTexto: { color: '#64748b', fontSize: 13, fontWeight: '600' },
-  filtroTextoAtivo: { color: '#ffffff' },
-  resumoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 14 },
-  resumoCard: {
-    flex: 1, minWidth: '44%', backgroundColor: '#111827', borderRadius: 14,
-    padding: 16, borderWidth: 1,
-  },
-  resumoNum: { fontSize: 28, fontWeight: '700' },
-  resumoLabel: { color: '#64748b', fontSize: 12, marginTop: 4 },
-  card: {
-    backgroundColor: '#111827', borderRadius: 16, padding: 18,
-    borderWidth: 1, borderColor: '#1f2937', marginBottom: 14,
-  },
-  secaoTitulo: {
-    color: '#94a3b8', fontSize: 12, fontWeight: '700',
-    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14,
-  },
-  linhaItem: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    marginBottom: 10, flexWrap: 'wrap',
-  },
-  linhaEsq: { flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 100, flex: 1 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  linhaLabel: { color: '#e2e8f0', fontSize: 13, flex: 1 },
-  linhaQty: { color: '#94a3b8', fontSize: 13, fontWeight: '700', minWidth: 20, textAlign: 'right' },
-  semDados: { color: '#475569', fontSize: 13, textAlign: 'center', paddingVertical: 8 },
-});
+function criarEstilos(t: AppTema) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: t.fundo },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16,
+    },
+    voltarBotao: {
+      width: 36, height: 36, borderRadius: 10, backgroundColor: t.card,
+      borderWidth: 1, borderColor: t.borda, alignItems: 'center', justifyContent: 'center',
+    },
+    titulo: { color: t.texto, fontSize: 17, fontWeight: '700' },
+    scroll: { padding: 16, paddingBottom: 40 },
+    filtrosRow: { gap: 8, paddingBottom: 16 },
+    filtroChip: {
+      paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+      backgroundColor: t.card, borderWidth: 1, borderColor: t.borda,
+    },
+    filtroChipAtivo: { backgroundColor: t.primario, borderColor: t.primario },
+    filtroTexto: { color: t.textoMuted, fontSize: 13, fontWeight: '600' },
+    filtroTextoAtivo: { color: '#ffffff' },
+    resumoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 14 },
+    resumoCard: {
+      flex: 1, minWidth: '44%', backgroundColor: t.card, borderRadius: 14,
+      padding: 16, borderWidth: 1,
+    },
+    resumoNum: { fontSize: 28, fontWeight: '700' },
+    resumoLabel: { color: t.textoMuted, fontSize: 12, marginTop: 4 },
+    card: {
+      backgroundColor: t.card, borderRadius: 16, padding: 18,
+      borderWidth: 1, borderColor: t.borda, marginBottom: 14,
+    },
+    secaoTitulo: {
+      color: t.textoSec, fontSize: 12, fontWeight: '700',
+      textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14,
+    },
+    linhaItem: {
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      marginBottom: 10, flexWrap: 'wrap',
+    },
+    linhaEsq: { flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 100, flex: 1 },
+    dot: { width: 8, height: 8, borderRadius: 4 },
+    linhaLabel: { color: t.texto, fontSize: 13, flex: 1 },
+    linhaQty: { color: t.textoSec, fontSize: 13, fontWeight: '700', minWidth: 20, textAlign: 'right' },
+    semDados: { color: t.textoFraco, fontSize: 13, textAlign: 'center', paddingVertical: 8 },
+  });
+}

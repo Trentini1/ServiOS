@@ -367,6 +367,6 @@ function criarEstilos(t: AppTema) {
       shadowOffset: { width: 0, height: 4 }, elevation: 4,
     },
     buttonText: { color: '#ffffff', fontSize: 15, fontWeight: '600' },
-    hint: { color: t.borda, fontSize: 11, textAlign: 'center', marginTop: 14 },
+    hint: { color: t.textoFraco, fontSize: 11, textAlign: 'center', marginTop: 14 },
   });
 }

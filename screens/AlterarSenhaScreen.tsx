@@ -8,8 +8,37 @@ import { useThema } from '../contexts/ThemeContext';
 import { AppTema } from '../utils/temas';
 
 type Props = { onVoltar: () => void };
-
 type Usuario = { nome: string; email: string; senha: string };
+
+type CampoProps = {
+  label: string; value: string; onChange: (v: string) => void;
+  ver: boolean; setVer: (v: boolean) => void;
+  tema: AppTema;
+  styles: ReturnType<typeof criarEstilos>;
+};
+
+function Campo({ label, value, onChange, ver, setVer, tema, styles }: CampoProps) {
+  return (
+    <View style={styles.campo}>
+      <Text style={styles.campoLabel}>{label}</Text>
+      <View style={styles.inputRow}>
+        <Ionicons name="lock-closed-outline" size={18} color={tema.textoMuted} style={{ marginRight: 8 }} />
+        <TextInput
+          style={styles.input}
+          value={value}
+          onChangeText={onChange}
+          secureTextEntry={!ver}
+          placeholder="••••••••"
+          placeholderTextColor={tema.textoFraco}
+          autoCapitalize="none"
+        />
+        <TouchableOpacity onPress={() => setVer(!ver)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Ionicons name={ver ? 'eye-off-outline' : 'eye-outline'} size={18} color={tema.textoMuted} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
 
 export default function AlterarSenhaScreen({ onVoltar }: Props) {
   const tema = useThema();
@@ -61,34 +90,6 @@ export default function AlterarSenhaScreen({ onVoltar }: Props) {
     ]);
   }
 
-  function Campo({
-    label, value, onChange, ver, setVer,
-  }: {
-    label: string; value: string; onChange: (v: string) => void;
-    ver: boolean; setVer: (v: boolean) => void;
-  }) {
-    return (
-      <View style={styles.campo}>
-        <Text style={styles.campoLabel}>{label}</Text>
-        <View style={styles.inputRow}>
-          <Ionicons name="lock-closed-outline" size={18} color={tema.textoMuted} style={{ marginRight: 8 }} />
-          <TextInput
-            style={styles.input}
-            value={value}
-            onChangeText={onChange}
-            secureTextEntry={!ver}
-            placeholder="••••••••"
-            placeholderTextColor={tema.textoFraco}
-            autoCapitalize="none"
-          />
-          <TouchableOpacity onPress={() => setVer(!ver)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name={ver ? 'eye-off-outline' : 'eye-outline'} size={18} color={tema.textoMuted} />
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -107,9 +108,9 @@ export default function AlterarSenhaScreen({ onVoltar }: Props) {
           </Text>
         </View>
 
-        <Campo label="Senha atual" value={senhaAtual} onChange={setSenhaAtual} ver={verAtual} setVer={setVerAtual} />
-        <Campo label="Nova senha" value={novaSenha} onChange={setNovaSenha} ver={verNova} setVer={setVerNova} />
-        <Campo label="Confirmar nova senha" value={confirmar} onChange={setConfirmar} ver={verConfirmar} setVer={setVerConfirmar} />
+        <Campo label="Senha atual" value={senhaAtual} onChange={setSenhaAtual} ver={verAtual} setVer={setVerAtual} tema={tema} styles={styles} />
+        <Campo label="Nova senha" value={novaSenha} onChange={setNovaSenha} ver={verNova} setVer={setVerNova} tema={tema} styles={styles} />
+        <Campo label="Confirmar nova senha" value={confirmar} onChange={setConfirmar} ver={verConfirmar} setVer={setVerConfirmar} tema={tema} styles={styles} />
 
         {novaSenha && novaSenha !== confirmar && confirmar.length > 0 && (
           <Text style={styles.erroTexto}>As senhas não coincidem</Text>

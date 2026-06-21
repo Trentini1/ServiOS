@@ -60,9 +60,16 @@ function AppInner() {
 
   useEffect(() => {
     async function carregarDadosSalvos() {
-      const usuarioSalvo = await carregar<Usuario>('usuarioLogado');
+      const usuarioSalvo = await carregar<Usuario | string>('usuarioLogado');
       const empresaSalva = await carregar<Empresa>('empresa');
-      if (usuarioSalvo) setUsuarioLogado(usuarioSalvo);
+      if (usuarioSalvo) {
+        if (typeof usuarioSalvo === 'string') {
+          // formato legado (só nome) — força novo login
+          await remover('usuarioLogado');
+        } else {
+          setUsuarioLogado(usuarioSalvo);
+        }
+      }
       if (empresaSalva) setEmpresa(empresaSalva);
       setCarregandoApp(false);
     }
