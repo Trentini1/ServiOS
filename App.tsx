@@ -17,54 +17,42 @@ import TemaAppScreen from './screens/TemaAppScreen';
 import TemaPdfScreen from './screens/TemaPdfScreen';
 import EdicaoEmpresaScreen from './screens/EdicaoEmpresaScreen';
 import AlterarSenhaScreen from './screens/AlterarSenhaScreen';
+import AssinaturasScreen from './screens/AssinaturasScreen';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { salvar, carregar, remover } from './utils/storage';
 
 type Empresa = {
-  nome: string;
-  cnpj: string;
-  telefone: string;
-  segmento: string;
-  cidade: string;
-  estado: string;
-  email?: string;
-  endereco?: string;
+  nome: string; cnpj: string; telefone: string;
+  segmento: string; cidade: string; estado: string;
+  email?: string; endereco?: string;
 };
 
 type Usuario = { nome: string; email: string; senha: string };
 
 type Tela =
-  | 'home'
-  | 'os-lista'
-  | 'os-form'
-  | 'os-detalhe'
-  | 'clientes-lista'
-  | 'clientes-form'
-  | 'agenda'
-  | 'relatorios'
-  | 'tecnicos-lista'
-  | 'tecnicos-form'
-  | 'configuracoes'
-  | 'tema-app'
-  | 'tema-pdf'
-  | 'edicao-empresa'
-  | 'alterar-senha';
+  | 'home' | 'os-lista' | 'os-form' | 'os-detalhe'
+  | 'clientes-lista' | 'clientes-form'
+  | 'agenda' | 'relatorios'
+  | 'tecnicos-lista' | 'tecnicos-form' | 'tecnico-editar'
+  | 'configuracoes' | 'tema-app' | 'tema-pdf' | 'edicao-empresa' | 'alterar-senha'
+  | 'assinaturas';
 
 function AppInner() {
   const [carregandoApp, setCarregandoApp] = useState(true);
   const [usuarioLogado, setUsuarioLogado] = useState<Usuario | null>(null);
-  const [empresa, setEmpresa] = useState<Empresa | null>(null);
-  const [telaAtual, setTelaAtual] = useState<Tela>('home');
-  const [osSelecionadaId, setOsSelecionadaId] = useState<string | null>(null);
-  const [telaAnterior, setTelaAnterior] = useState<Tela>('home');
+  const [empresa, setEmpresa]             = useState<Empresa | null>(null);
+  const [telaAtual, setTelaAtual]         = useState<Tela>('home');
+  const [telaAnterior, setTelaAnterior]   = useState<Tela>('home');
+  const [osSelecionadaId, setOsSelecionadaId]     = useState<string | null>(null);
+  const [tecnicoEditandoId, setTecnicoEditandoId] = useState<string | null>(null);
+  const [dataAgendadaOS, setDataAgendadaOS]       = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    async function carregarDadosSalvos() {
+    (async () => {
       const usuarioSalvo = await carregar<Usuario | string>('usuarioLogado');
       const empresaSalva = await carregar<Empresa>('empresa');
       if (usuarioSalvo) {
         if (typeof usuarioSalvo === 'string') {
-          // formato legado (só nome) — força novo login
           await remover('usuarioLogado');
         } else {
           setUsuarioLogado(usuarioSalvo);
@@ -72,8 +60,7 @@ function AppInner() {
       }
       if (empresaSalva) setEmpresa(empresaSalva);
       setCarregandoApp(false);
-    }
-    carregarDadosSalvos();
+    })();
   }, []);
 
   function irPara(tela: Tela) {
@@ -100,11 +87,8 @@ function AppInner() {
 
   function handleAbrirMenu(id: string) {
     const mapa: Record<string, Tela> = {
-      os: 'os-lista',
-      clientes: 'clientes-lista',
-      agenda: 'agenda',
-      relatorios: 'relatorios',
-      tecnicos: 'tecnicos-lista',
+      os: 'os-lista', clientes: 'clientes-lista', agenda: 'agenda',
+      relatorios: 'relatorios', tecnicos: 'tecnicos-lista', assinaturas: 'assinaturas',
     };
     if (mapa[id]) irPara(mapa[id]);
   }
@@ -117,8 +101,8 @@ function AppInner() {
     );
   }
 
-  if (!usuarioLogado) return <LoginScreen onLoginSuccess={(u) => handleLoginSuccess(u)} />;
-  if (!empresa) return <CompanyRegisterScreen onConcluir={handleEmpresaConcluida} />;
+  if (!usuarioLogado) return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+  if (!empresa)       return <CompanyRegisterScreen onConcluir={handleEmpresaConcluida} />;
 
   if (telaAtual === 'os-lista') {
     return (
@@ -129,24 +113,28 @@ function AppInner() {
       />
     );
   }
+
   if (telaAtual === 'os-form') {
     return (
       <OSFormScreen
-        onVoltar={() => irPara('os-lista')}
-        onSalvo={() => irPara('os-lista')}
+        onVoltar={() => irPara(telaAnterior === 'agenda' ? 'agenda' : 'os-lista')}
+        onSalvo={() => { setDataAgendadaOS(undefined); irPara(telaAnterior === 'agenda' ? 'agenda' : 'os-lista'); }}
         onIrParaClientes={() => irPara('clientes-form')}
+        dataAgendadaInicial={dataAgendadaOS}
       />
     );
   }
+
   if (telaAtual === 'os-detalhe' && osSelecionadaId) {
     return (
       <OSDetailScreen
         osId={osSelecionadaId}
-        onVoltar={() => irPara(telaAnterior === 'agenda' ? 'agenda' : 'os-lista')}
+        onVoltar={() => irPara(telaAnterior === 'agenda' ? 'agenda' : telaAnterior === 'assinaturas' ? 'assinaturas' : 'os-lista')}
         onAlterado={() => {}}
       />
     );
   }
+
   if (telaAtual === 'clientes-lista') {
     return (
       <ClientListScreen
@@ -155,6 +143,7 @@ function AppInner() {
       />
     );
   }
+
   if (telaAtual === 'clientes-form') {
     return (
       <ClientFormScreen
@@ -163,23 +152,37 @@ function AppInner() {
       />
     );
   }
+
   if (telaAtual === 'agenda') {
     return (
       <AgendaScreen
         onVoltar={() => irPara('home')}
         onAbrirOS={(id) => { setOsSelecionadaId(id); irPara('os-detalhe'); }}
+        onNovaOSComData={(dataBR) => { setDataAgendadaOS(dataBR); irPara('os-form'); }}
       />
     );
   }
-  if (telaAtual === 'relatorios') return <RelatoriosScreen onVoltar={() => irPara('home')} />;
+
+  if (telaAtual === 'relatorios')   return <RelatoriosScreen onVoltar={() => irPara('home')} />;
+  if (telaAtual === 'assinaturas') {
+    return (
+      <AssinaturasScreen
+        onVoltar={() => irPara('home')}
+        onAbrirOS={(id) => { setOsSelecionadaId(id); irPara('os-detalhe'); }}
+      />
+    );
+  }
+
   if (telaAtual === 'tecnicos-lista') {
     return (
       <TecnicosListScreen
         onVoltar={() => irPara('home')}
         onNovoTecnico={() => irPara('tecnicos-form')}
+        onEditarTecnico={(id) => { setTecnicoEditandoId(id); irPara('tecnico-editar'); }}
       />
     );
   }
+
   if (telaAtual === 'tecnicos-form') {
     return (
       <TecnicoFormScreen
@@ -188,6 +191,17 @@ function AppInner() {
       />
     );
   }
+
+  if (telaAtual === 'tecnico-editar' && tecnicoEditandoId) {
+    return (
+      <TecnicoFormScreen
+        onVoltar={() => { setTecnicoEditandoId(null); irPara('tecnicos-lista'); }}
+        onSalvo={() => { setTecnicoEditandoId(null); irPara('tecnicos-lista'); }}
+        tecnicoId={tecnicoEditandoId}
+      />
+    );
+  }
+
   if (telaAtual === 'configuracoes') {
     return (
       <ConfiguracoesScreen
@@ -196,10 +210,10 @@ function AppInner() {
       />
     );
   }
-  if (telaAtual === 'tema-app') return <TemaAppScreen onVoltar={() => irPara('configuracoes')} />;
-  if (telaAtual === 'tema-pdf') return <TemaPdfScreen onVoltar={() => irPara('configuracoes')} />;
+  if (telaAtual === 'tema-app')       return <TemaAppScreen      onVoltar={() => irPara('configuracoes')} />;
+  if (telaAtual === 'tema-pdf')       return <TemaPdfScreen      onVoltar={() => irPara('configuracoes')} />;
   if (telaAtual === 'edicao-empresa') return <EdicaoEmpresaScreen onVoltar={() => irPara('configuracoes')} />;
-  if (telaAtual === 'alterar-senha') return <AlterarSenhaScreen onVoltar={() => irPara('configuracoes')} />;
+  if (telaAtual === 'alterar-senha')  return <AlterarSenhaScreen  onVoltar={() => irPara('configuracoes')} />;
 
   return (
     <HomeScreen

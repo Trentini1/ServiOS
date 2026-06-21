@@ -1,21 +1,22 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, RefreshControl, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { carregar, salvar } from '../utils/storage';
+import { carregar } from '../utils/storage';
 import { useThema } from '../contexts/ThemeContext';
 import { AppTema } from '../utils/temas';
 
 export type Tecnico = { id: string; nome: string; telefone: string; cargo: string };
 
-type Props = { onVoltar: () => void; onNovoTecnico: () => void };
+type Props = {
+  onVoltar: () => void;
+  onNovoTecnico: () => void;
+  onEditarTecnico: (id: string) => void;
+};
 
 const CORES_CARGO: Record<string, string> = {
-  'Técnico Junior':  '#0891b2',
-  'Técnico Pleno':   '#2563eb',
-  'Técnico Senior':  '#9333ea',
-  'Eletricista':     '#d97706',
-  'Mecânico':        '#16a34a',
-  'Supervisor':      '#db2777',
+  'Técnico Junior':  '#0891b2', 'Técnico Pleno': '#2563eb', 'Técnico Senior': '#9333ea',
+  'Eletricista':     '#d97706', 'Mecânico':       '#16a34a', 'Supervisor':     '#db2777',
+  'Técnico':         '#9333ea', 'Encarregado':    '#0891b2',
 };
 
 function corDoCargo(cargo: string): string {
@@ -30,10 +31,10 @@ function iniciais(nome: string): string {
   return nome.split(' ').slice(0, 2).map((p) => p[0]).join('').toUpperCase();
 }
 
-export default function TecnicosListScreen({ onVoltar, onNovoTecnico }: Props) {
-  const tema = useThema();
+export default function TecnicosListScreen({ onVoltar, onNovoTecnico, onEditarTecnico }: Props) {
+  const tema   = useThema();
   const styles = useMemo(() => criarEstilos(tema), [tema]);
-  const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
+  const [tecnicos, setTecnicos]   = useState<Tecnico[]>([]);
   const [recarregando, setRecarregando] = useState(false);
 
   const carregarTecnicos = useCallback(async () => {
@@ -48,23 +49,8 @@ export default function TecnicosListScreen({ onVoltar, onNovoTecnico }: Props) {
     setRecarregando(false);
   }
 
-  function confirmarExclusao(tecnico: Tecnico) {
-    Alert.alert('Excluir Técnico', `Remover ${tecnico.nome} da equipe?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Excluir', style: 'destructive',
-        onPress: async () => {
-          const lista = (await carregar<Tecnico[]>('tecnicos')) ?? [];
-          await salvar('tecnicos', lista.filter((t) => t.id !== tecnico.id));
-          carregarTecnicos();
-        },
-      },
-    ]);
-  }
-
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onVoltar} style={[styles.iconBtn, { backgroundColor: tema.card, borderColor: tema.borda }]}>
           <Ionicons name="arrow-back" size={20} color={tema.texto} />
@@ -75,10 +61,10 @@ export default function TecnicosListScreen({ onVoltar, onNovoTecnico }: Props) {
         </View>
         <TouchableOpacity
           onPress={onNovoTecnico}
-          style={[styles.novoBtn, { backgroundColor: '#9333ea' }]}
+          style={[styles.iconBtn, { backgroundColor: '#9333ea', borderColor: '#9333ea' }]}
           activeOpacity={0.85}
         >
-          <Ionicons name="add" size={20} color="#ffffff" />
+          <Ionicons name="add" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
 
@@ -93,17 +79,23 @@ export default function TecnicosListScreen({ onVoltar, onNovoTecnico }: Props) {
         }
         ListEmptyComponent={
           <View style={styles.vazio}>
-            <View style={[styles.vazioIconeBox, { backgroundColor: tema.card, borderColor: tema.borda }]}>
+            <View style={[styles.vazioIcone, { backgroundColor: tema.card, borderColor: tema.borda }]}>
               <Ionicons name="construct-outline" size={36} color={tema.textoFraco} />
             </View>
             <Text style={[styles.vazioTitulo, { color: tema.textoSec }]}>Nenhum técnico cadastrado</Text>
-            <Text style={[styles.vazioTexto, { color: tema.textoFraco }]}>Toque no + para cadastrar o primeiro membro da equipe.</Text>
+            <Text style={[styles.vazioTexto, { color: tema.textoFraco }]}>
+              Toque no + para cadastrar o primeiro membro da equipe.
+            </Text>
           </View>
         }
         renderItem={({ item }) => {
           const cor = corDoCargo(item.cargo);
           return (
-            <View style={[styles.card, { backgroundColor: tema.card, borderColor: tema.borda }]}>
+            <TouchableOpacity
+              style={[styles.card, { backgroundColor: tema.card, borderColor: tema.borda }]}
+              onPress={() => onEditarTecnico(item.id)}
+              activeOpacity={0.8}
+            >
               <View style={[styles.avatar, { backgroundColor: cor + '22' }]}>
                 <Text style={[styles.avatarTexto, { color: cor }]}>{iniciais(item.nome)}</Text>
               </View>
@@ -119,15 +111,10 @@ export default function TecnicosListScreen({ onVoltar, onNovoTecnico }: Props) {
                   </View>
                 )}
               </View>
-              <TouchableOpacity
-                onPress={() => confirmarExclusao(item)}
-                style={styles.excluirBtn}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="trash-outline" size={17} color="#f87171" />
-              </TouchableOpacity>
-            </View>
+              <View style={styles.editarHint}>
+                <Ionicons name="create-outline" size={15} color={tema.textoFraco} />
+              </View>
+            </TouchableOpacity>
           );
         }}
       />
@@ -137,7 +124,7 @@ export default function TecnicosListScreen({ onVoltar, onNovoTecnico }: Props) {
         onPress={onNovoTecnico}
         activeOpacity={0.9}
       >
-        <Ionicons name="add" size={28} color="#ffffff" />
+        <Ionicons name="add" size={28} color="#fff" />
       </TouchableOpacity>
     </View>
   );
@@ -153,18 +140,10 @@ function criarEstilos(t: AppTema) {
     iconBtn: { width: 40, height: 40, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
     titulo: { color: t.texto, fontSize: 18, fontWeight: '800', letterSpacing: -0.4 },
     subtitulo: { fontSize: 12, marginTop: 1 },
-    novoBtn: {
-      width: 40, height: 40, borderRadius: 12,
-      alignItems: 'center', justifyContent: 'center', marginLeft: 'auto', flexShrink: 0,
-      shadowColor: '#9333ea', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4,
-    },
     lista: { paddingHorizontal: 20, paddingBottom: 100 },
     listaVazia: { flexGrow: 1 },
     vazio: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, gap: 8, paddingTop: 60 },
-    vazioIconeBox: {
-      width: 72, height: 72, borderRadius: 20, borderWidth: 1,
-      alignItems: 'center', justifyContent: 'center', marginBottom: 4,
-    },
+    vazioIcone: { width: 72, height: 72, borderRadius: 20, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
     vazioTitulo: { fontSize: 16, fontWeight: '700' },
     vazioTexto: { fontSize: 13, textAlign: 'center', lineHeight: 20 },
     card: {
@@ -182,10 +161,7 @@ function criarEstilos(t: AppTema) {
     cargoTexto: { fontSize: 11, fontWeight: '600' },
     telRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     telTexto: { fontSize: 11 },
-    excluirBtn: {
-      width: 34, height: 34, borderRadius: 10, backgroundColor: '#f8717115',
-      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-    },
+    editarHint: { paddingHorizontal: 4 },
     fab: {
       position: 'absolute', right: 20, bottom: 30,
       width: 56, height: 56, borderRadius: 28,

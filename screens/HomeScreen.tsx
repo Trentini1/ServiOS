@@ -22,11 +22,12 @@ type Props = {
 };
 
 const MENU = [
-  { id: 'os',        titulo: 'Ordens de Serviço', icone: 'document-text',  cor: '#2563eb' },
-  { id: 'clientes',  titulo: 'Clientes',           icone: 'people',         cor: '#16a34a' },
-  { id: 'agenda',    titulo: 'Agenda',              icone: 'calendar',       cor: '#d97706' },
-  { id: 'relatorios',titulo: 'Relatórios',          icone: 'bar-chart',      cor: '#9333ea' },
-  { id: 'tecnicos',  titulo: 'Técnicos',            icone: 'construct',      cor: '#0891b2' },
+  { id: 'os',          titulo: 'Ordens de Serviço', icone: 'document-text',  cor: '#2563eb' },
+  { id: 'clientes',    titulo: 'Clientes',           icone: 'people',         cor: '#16a34a' },
+  { id: 'agenda',      titulo: 'Agenda',              icone: 'calendar',       cor: '#d97706' },
+  { id: 'relatorios',  titulo: 'Relatórios',          icone: 'bar-chart',      cor: '#9333ea' },
+  { id: 'tecnicos',    titulo: 'Técnicos',            icone: 'construct',      cor: '#0891b2' },
+  { id: 'assinaturas', titulo: 'Assinaturas',         icone: 'create',         cor: '#db2777' },
 ] as const;
 
 const CORES_STATUS: Record<string, string> = {

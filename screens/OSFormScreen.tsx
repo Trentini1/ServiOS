@@ -41,9 +41,10 @@ type Props = {
   onVoltar: () => void;
   onSalvo: () => void;
   onIrParaClientes: () => void;
+  dataAgendadaInicial?: string;  // DD/MM/AAAA pré-preenchida vinda da Agenda
 };
 
-export default function OSFormScreen({ onVoltar, onSalvo, onIrParaClientes }: Props) {
+export default function OSFormScreen({ onVoltar, onSalvo, onIrParaClientes, dataAgendadaInicial }: Props) {
   const tema = useThema();
   const styles = useMemo(() => criarEstilos(tema), [tema]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -57,7 +58,7 @@ export default function OSFormScreen({ onVoltar, onSalvo, onIrParaClientes }: Pr
   const [posicao, setPosicao] = useState('');
   const [tipoManutencao, setTipoManutencao] = useState('');
   const [descricao, setDescricao] = useState('');
-  const [dataAgendada, setDataAgendada] = useState('');
+  const [dataAgendada, setDataAgendada] = useState(dataAgendadaInicial ?? '');
   const [salvando, setSalvando] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -122,8 +123,8 @@ export default function OSFormScreen({ onVoltar, onSalvo, onIrParaClientes }: Pr
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.header}>
-        <TouchableOpacity onPress={onVoltar} style={styles.voltarBotao}>
-          <Ionicons name="arrow-back" size={22} color="#ffffff" />
+        <TouchableOpacity onPress={onVoltar} style={[styles.voltarBotao, { backgroundColor: tema.card, borderColor: tema.borda }]}>
+          <Ionicons name="arrow-back" size={20} color={tema.texto} />
         </TouchableOpacity>
         <Text style={styles.titulo}>Nova Ordem de Serviço</Text>
         <View style={{ width: 36 }} />
