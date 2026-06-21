@@ -1,7 +1,7 @@
 ﻿import { useRef, useEffect, useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Animated, Dimensions,
+  Animated, Dimensions, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -59,6 +59,7 @@ export default function HomeScreen({ usuario, empresa, onSair, onAbrirMenu, onAb
   const [totalClientes, setTotalClientes] = useState(0);
   const [agendadas, setAgendadas]         = useState(0);
   const [recentes, setRecentes]           = useState<OrdemServico[]>([]);
+  const [logo, setLogo]                   = useState<string | null>(null);
 
   useEffect(() => {
     Animated.parallel([
@@ -68,10 +69,12 @@ export default function HomeScreen({ usuario, empresa, onSair, onAbrirMenu, onAb
     ]).start();
 
     (async () => {
-      const [os, cls] = await Promise.all([
+      const [os, cls, logoSalva] = await Promise.all([
         carregar<OrdemServico[]>('ordensServico'),
         carregar<Cliente[]>('clientes'),
+        carregar<string>('logoEmpresa'),
       ]);
+      setLogo(logoSalva ?? null);
       const ordens = os ?? [];
       const hoje   = new Date().toISOString().split('T')[0];
       setOsAbertas(ordens.filter((o) => o.status === 'Aberta' || o.status === 'Em Andamento').length);
@@ -119,7 +122,12 @@ export default function HomeScreen({ usuario, empresa, onSair, onAbrirMenu, onAb
               </View>
             </View>
 
-            <Text style={styles.heroNome}>{primeiroNome}</Text>
+            <View style={styles.heroNomeRow}>
+              <Text style={styles.heroNome}>{primeiroNome}</Text>
+              {logo ? (
+                <Image source={{ uri: logo }} style={styles.heroLogo} resizeMode="contain" />
+              ) : null}
+            </View>
 
             <View style={styles.heroEmpresaRow}>
               <View style={styles.heroEmpresaBadge}>
@@ -273,7 +281,12 @@ function criarEstilos(t: AppTema) {
       alignItems: 'center', justifyContent: 'center',
     },
     heroBtnSair: { backgroundColor: 'rgba(239,68,68,0.15)' },
-    heroNome: { color: '#ffffff', fontSize: 36, fontWeight: '800', letterSpacing: -1, marginBottom: 10 },
+    heroNomeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+    heroNome: { color: '#ffffff', fontSize: 36, fontWeight: '800', letterSpacing: -1 },
+    heroLogo: {
+      width: 52, height: 52, borderRadius: 12,
+      backgroundColor: 'rgba(255,255,255,0.92)',
+    },
     heroEmpresaRow: { flexDirection: 'row', gap: 7, marginBottom: 24 },
     heroEmpresaBadge: {
       flexDirection: 'row', alignItems: 'center', gap: 5,

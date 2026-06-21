@@ -19,6 +19,7 @@ import EdicaoEmpresaScreen from './screens/EdicaoEmpresaScreen';
 import AlterarSenhaScreen from './screens/AlterarSenhaScreen';
 import LicencaScreen from './screens/LicencaScreen';
 import CamposOSScreen from './screens/CamposOSScreen';
+import LogoEmpresaScreen from './screens/LogoEmpresaScreen';
 import PromoProScreen from './screens/PromoProScreen';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { salvar, carregar, remover } from './utils/storage';
@@ -37,7 +38,7 @@ type Tela =
   | 'agenda' | 'relatorios'
   | 'tecnicos-lista' | 'tecnicos-form' | 'tecnico-editar'
   | 'configuracoes' | 'tema-app' | 'tema-pdf'
-  | 'edicao-empresa' | 'alterar-senha' | 'licenca' | 'campos-os';
+  | 'edicao-empresa' | 'alterar-senha' | 'licenca' | 'campos-os' | 'logo-empresa';
 
 function AppInner() {
   const [carregandoApp, setCarregandoApp] = useState(true);
@@ -215,7 +216,8 @@ function AppInner() {
   if (telaAtual === 'edicao-empresa') return <EdicaoEmpresaScreen onVoltar={() => irPara('configuracoes')} />;
   if (telaAtual === 'alterar-senha')  return <AlterarSenhaScreen  onVoltar={() => irPara('configuracoes')} />;
   if (telaAtual === 'licenca')   return <LicencaScreen    onVoltar={() => irPara('configuracoes')} />;
-  if (telaAtual === 'campos-os') return <CamposOSScreen   onVoltar={() => irPara('configuracoes')} />;
+  if (telaAtual === 'campos-os')    return <CamposOSScreen    onVoltar={() => irPara('configuracoes')} />;
+  if (telaAtual === 'logo-empresa') return <LogoEmpresaScreen onVoltar={() => irPara('configuracoes')} />;
 
   return (
     <>

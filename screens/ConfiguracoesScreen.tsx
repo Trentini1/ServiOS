@@ -9,7 +9,7 @@ const VERSAO  = '1.0.0';
 const ANO     = '2025';
 const CRIADOR = 'Erick Trentini';
 
-type SubTela = 'tema-app' | 'tema-pdf' | 'edicao-empresa' | 'alterar-senha' | 'licenca' | 'campos-os';
+type SubTela = 'tema-app' | 'tema-pdf' | 'edicao-empresa' | 'alterar-senha' | 'licenca' | 'campos-os' | 'logo-empresa';
 type Props = { onVoltar: () => void; onNavegar: (tela: SubTela) => void };
 
 const MENU_APARENCIA = [
@@ -22,8 +22,9 @@ const MENU_OS = [
 ];
 
 const MENU_CONTA = [
-  { id: 'edicao-empresa' as SubTela, icone: 'business-outline',    cor: '#16a34a', titulo: 'Dados da Empresa', descricao: 'Nome, CNPJ, endereço e contato' },
-  { id: 'alterar-senha'  as SubTela, icone: 'lock-closed-outline',  cor: '#d97706', titulo: 'Alterar Senha',   descricao: 'Atualize a senha da sua conta'    },
+  { id: 'edicao-empresa' as SubTela, icone: 'business-outline',    cor: '#16a34a', titulo: 'Dados da Empresa', descricao: 'Nome, CNPJ, endereço e contato'    },
+  { id: 'logo-empresa'   as SubTela, icone: 'image-outline',        cor: '#0891b2', titulo: 'Logo da Empresa', descricao: 'Aparece nos relatórios e tela inicial' },
+  { id: 'alterar-senha'  as SubTela, icone: 'lock-closed-outline',  cor: '#d97706', titulo: 'Alterar Senha',   descricao: 'Atualize a senha da sua conta'         },
 ];
 
 const MENU_LICENCA = [

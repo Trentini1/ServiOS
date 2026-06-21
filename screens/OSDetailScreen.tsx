@@ -64,7 +64,8 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
       const pdfTema = ordem.temaPdfId
         ? (PDF_TEMAS_PRESET.find((t) => t.id === ordem.temaPdfId) ?? pdfTemaPadrao)
         : pdfTemaPadrao;
-      await gerarESalvarPdfOS(ordem, empresa, pdfTema);
+      const logo = await carregar<string>('logoEmpresa');
+      await gerarESalvarPdfOS(ordem, empresa, pdfTema, logo ?? undefined);
     } catch {
       Alert.alert('Erro', 'Não foi possível gerar o PDF.');
     } finally {

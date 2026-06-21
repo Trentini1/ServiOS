@@ -170,7 +170,7 @@ function cssParaTema(pdfTema: PdfTema): string {
   `;
 }
 
-function montarHTML(ordem: OrdemServico, empresa: Empresa, pdfTema: PdfTema) {
+function montarHTML(ordem: OrdemServico, empresa: Empresa, pdfTema: PdfTema, logoBase64?: string) {
   const css = cssParaTema(pdfTema);
   const enderecoEmpresa = [empresa.endereco, empresa.cidade, empresa.estado].filter(Boolean).join(' · ');
 
@@ -214,11 +214,14 @@ function montarHTML(ordem: OrdemServico, empresa: Empresa, pdfTema: PdfTema) {
       </head>
       <body>
         <div class="cabecalho">
-          <div>
-            <div class="empresa-nome">${empresa.nome}</div>
-            ${empresa.cnpj ? `<div class="empresa-info">CNPJ: ${empresa.cnpj}</div>` : ''}
-            ${enderecoEmpresa ? `<div class="empresa-info">${enderecoEmpresa}</div>` : ''}
-            ${empresa.telefone ? `<div class="empresa-info">${empresa.telefone}</div>` : ''}
+          <div style="display:flex; align-items:center; gap:12px;">
+            ${logoBase64 ? `<img src="${logoBase64}" style="width:54px; height:54px; object-fit:contain; border-radius:8px; background:#fff; flex-shrink:0;" />` : ''}
+            <div>
+              <div class="empresa-nome">${empresa.nome}</div>
+              ${empresa.cnpj ? `<div class="empresa-info">CNPJ: ${empresa.cnpj}</div>` : ''}
+              ${enderecoEmpresa ? `<div class="empresa-info">${enderecoEmpresa}</div>` : ''}
+              ${empresa.telefone ? `<div class="empresa-info">${empresa.telefone}</div>` : ''}
+            </div>
           </div>
           <div>
             <div class="doc-titulo">ORDEM DE SERVIÇO</div>
@@ -295,9 +298,10 @@ function montarHTML(ordem: OrdemServico, empresa: Empresa, pdfTema: PdfTema) {
 export async function gerarESalvarPdfOS(
   ordem: OrdemServico,
   empresa: Empresa,
-  pdfTema: PdfTema = PDF_TEMA_PADRAO
+  pdfTema: PdfTema = PDF_TEMA_PADRAO,
+  logoBase64?: string,
 ) {
-  const html = montarHTML(ordem, empresa, pdfTema);
+  const html = montarHTML(ordem, empresa, pdfTema, logoBase64);
   const { uri } = await Print.printToFileAsync({ html });
   const disponivel = await Sharing.isAvailableAsync();
   if (disponivel) {
