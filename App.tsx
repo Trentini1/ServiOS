@@ -19,6 +19,7 @@ import EdicaoEmpresaScreen from './screens/EdicaoEmpresaScreen';
 import AlterarSenhaScreen from './screens/AlterarSenhaScreen';
 import LicencaScreen from './screens/LicencaScreen';
 import CamposOSScreen from './screens/CamposOSScreen';
+import PromoProScreen from './screens/PromoProScreen';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { salvar, carregar, remover } from './utils/storage';
 
@@ -47,6 +48,7 @@ function AppInner() {
   const [osSelecionadaId, setOsSelecionadaId]     = useState<string | null>(null);
   const [tecnicoEditandoId, setTecnicoEditandoId] = useState<string | null>(null);
   const [dataAgendadaOS, setDataAgendadaOS]       = useState<string | undefined>(undefined);
+  const [mostrarPromo, setMostrarPromo]           = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -60,6 +62,11 @@ function AppInner() {
         }
       }
       if (empresaSalva) setEmpresa(empresaSalva);
+      // Mostra promo apenas para usuários sem plano Pro
+      const plano = await carregar<string>('plano');
+      if (usuarioSalvo && typeof usuarioSalvo !== 'string' && empresaSalva && plano !== 'pro') {
+        setMostrarPromo(true);
+      }
       setCarregandoApp(false);
     })();
   }, []);
@@ -211,13 +218,19 @@ function AppInner() {
   if (telaAtual === 'campos-os') return <CamposOSScreen   onVoltar={() => irPara('configuracoes')} />;
 
   return (
-    <HomeScreen
-      usuario={usuarioLogado.nome}
-      empresa={empresa}
-      onSair={handleSair}
-      onAbrirMenu={handleAbrirMenu}
-      onAbrirConfiguracoes={() => irPara('configuracoes')}
-    />
+    <>
+      <HomeScreen
+        usuario={usuarioLogado.nome}
+        empresa={empresa}
+        onSair={handleSair}
+        onAbrirMenu={handleAbrirMenu}
+        onAbrirConfiguracoes={() => irPara('configuracoes')}
+      />
+      <PromoProScreen
+        visivel={mostrarPromo}
+        onFechar={() => setMostrarPromo(false)}
+      />
+    </>
   );
 }
 
