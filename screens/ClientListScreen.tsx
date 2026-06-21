@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-  View, Text, StyleSheet, TouchableOpacity, FlatList, RefreshControl,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, RefreshControl, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { carregar } from '../utils/storage';
 import { useThema } from '../contexts/ThemeContext';
@@ -13,10 +11,21 @@ export type Cliente = {
 
 type Props = { onVoltar: () => void; onNovoCliente: () => void };
 
+function iniciais(nome: string): string {
+  return nome.split(' ').slice(0, 2).map((p) => p[0]).join('').toUpperCase();
+}
+
+const CORES_AVATAR = ['#2563eb', '#16a34a', '#d97706', '#9333ea', '#0891b2', '#db2777'];
+function corAvatar(id: string): string {
+  const soma = [...id].reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  return CORES_AVATAR[soma % CORES_AVATAR.length];
+}
+
 export default function ClientListScreen({ onVoltar, onNovoCliente }: Props) {
   const tema = useThema();
   const styles = useMemo(() => criarEstilos(tema), [tema]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [busca, setBusca] = useState('');
   const [recarregando, setRecarregando] = useState(false);
 
   const carregarClientes = useCallback(async () => {
@@ -32,47 +41,128 @@ export default function ClientListScreen({ onVoltar, onNovoCliente }: Props) {
     setRecarregando(false);
   }
 
+  const clientesFiltrados = useMemo(() => {
+    const lista = [...clientes].reverse();
+    if (!busca.trim()) return lista;
+    const q = busca.toLowerCase();
+    return lista.filter((c) =>
+      c.nome.toLowerCase().includes(q) ||
+      c.cidade.toLowerCase().includes(q) ||
+      c.cnpjCpf.includes(q)
+    );
+  }, [clientes, busca]);
+
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onVoltar} style={styles.voltarBotao}>
-          <Ionicons name="arrow-back" size={22} color="#ffffff" />
+        <TouchableOpacity onPress={onVoltar} style={[styles.iconBtn, { backgroundColor: tema.card, borderColor: tema.borda }]}>
+          <Ionicons name="arrow-back" size={20} color={tema.texto} />
         </TouchableOpacity>
-        <Text style={styles.titulo}>Clientes</Text>
-        <View style={{ width: 36 }} />
+        <View>
+          <Text style={styles.titulo}>Clientes</Text>
+          <Text style={[styles.subtitulo, { color: tema.textoMuted }]}>{clientes.length} cadastrados</Text>
+        </View>
+        <TouchableOpacity
+          onPress={onNovoCliente}
+          style={[styles.novoBtn, { backgroundColor: '#16a34a' }]}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="add" size={20} color="#ffffff" />
+        </TouchableOpacity>
       </View>
 
-      {clientes.length === 0 ? (
-        <View style={styles.vazio}>
-          <Ionicons name="people-outline" size={48} color={tema.borda} />
-          <Text style={styles.vazioTitulo}>Nenhum cliente ainda</Text>
-          <Text style={styles.vazioTexto}>Toque no botão abaixo para cadastrar o primeiro cliente.</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={clientes.slice().reverse()}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.lista}
-          refreshControl={
-            <RefreshControl refreshing={recarregando} onRefresh={recarregar}
-              tintColor="#16a34a" colors={['#16a34a']} />
-          }
-          renderItem={({ item }) => (
-            <View style={styles.card}>
-              <View style={styles.cardIcone}>
-                <Ionicons name="business" size={20} color="#16a34a" />
-              </View>
-              <View style={styles.cardInfo}>
-                <Text style={styles.cardNome}>{item.nome}</Text>
-                <Text style={styles.cardDetalhe}>{item.cnpjCpf}</Text>
-                <Text style={styles.cardLocal}>{item.cidade}/{item.estado} • {item.telefone}</Text>
-              </View>
-            </View>
+      {/* Busca */}
+      {clientes.length > 0 && (
+        <View style={[styles.buscaBox, { backgroundColor: tema.inputFundo, borderColor: tema.borda }]}>
+          <Ionicons name="search-outline" size={17} color={tema.textoMuted} />
+          <TextInput
+            style={[styles.buscaInput, { color: tema.texto }]}
+            placeholder="Buscar cliente, cidade, CNPJ..."
+            placeholderTextColor={tema.textoFraco}
+            value={busca}
+            onChangeText={setBusca}
+            autoCapitalize="none"
+          />
+          {busca.length > 0 && (
+            <TouchableOpacity onPress={() => setBusca('')}>
+              <Ionicons name="close-circle" size={16} color={tema.textoMuted} />
+            </TouchableOpacity>
           )}
-        />
+        </View>
       )}
 
-      <TouchableOpacity style={styles.fab} onPress={onNovoCliente} activeOpacity={0.9}>
+      {/* Lista */}
+      <FlatList
+        data={clientesFiltrados}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={[styles.lista, clientesFiltrados.length === 0 && styles.listaVazia]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={recarregando} onRefresh={recarregar}
+            tintColor="#16a34a" colors={['#16a34a']} />
+        }
+        ListEmptyComponent={
+          <View style={styles.vazio}>
+            <View style={[styles.vazioIconeBox, { backgroundColor: tema.card, borderColor: tema.borda }]}>
+              <Ionicons name="people-outline" size={36} color={tema.textoFraco} />
+            </View>
+            <Text style={[styles.vazioTitulo, { color: tema.textoSec }]}>
+              {busca ? 'Nenhum resultado' : 'Nenhum cliente ainda'}
+            </Text>
+            <Text style={[styles.vazioTexto, { color: tema.textoFraco }]}>
+              {busca ? 'Tente um termo diferente.' : 'Toque no + para cadastrar o primeiro cliente.'}
+            </Text>
+          </View>
+        }
+        renderItem={({ item, index }) => {
+          const cor = corAvatar(item.id);
+          const mostrarSeparador = index === 0 || (
+            clientesFiltrados[index - 1]?.nome[0].toUpperCase() !== item.nome[0].toUpperCase()
+          );
+          const letraSec = item.nome[0].toUpperCase();
+          return (
+            <>
+              {mostrarSeparador && (
+                <View style={styles.separadorRow}>
+                  <Text style={[styles.separadorLetra, { color: tema.primario }]}>{letraSec}</Text>
+                  <View style={[styles.separadorLinha, { backgroundColor: tema.borda }]} />
+                </View>
+              )}
+              <View style={[styles.card, { backgroundColor: tema.card, borderColor: tema.borda }]}>
+                <View style={[styles.avatar, { backgroundColor: cor + '22' }]}>
+                  <Text style={[styles.avatarTexto, { color: cor }]}>{iniciais(item.nome)}</Text>
+                </View>
+                <View style={styles.cardInfo}>
+                  <Text style={[styles.cardNome, { color: tema.texto }]}>{item.nome}</Text>
+                  <Text style={[styles.cardDoc, { color: tema.textoSec }]}>{item.cnpjCpf}</Text>
+                  <View style={styles.cardMetaRow}>
+                    <View style={styles.metaItem}>
+                      <Ionicons name="location-outline" size={11} color={tema.textoFraco} />
+                      <Text style={[styles.metaTexto, { color: tema.textoFraco }]}>{item.cidade}/{item.estado}</Text>
+                    </View>
+                    {!!item.telefone && (
+                      <View style={styles.metaItem}>
+                        <Ionicons name="call-outline" size={11} color={tema.textoFraco} />
+                        <Text style={[styles.metaTexto, { color: tema.textoFraco }]}>{item.telefone}</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+                <View style={[styles.tagChip, { backgroundColor: cor + '15', borderColor: cor + '33' }]}>
+                  <Ionicons name="business" size={12} color={cor} />
+                </View>
+              </View>
+            </>
+          );
+        }}
+      />
+
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: '#16a34a', shadowColor: '#16a34a' }]}
+        onPress={onNovoCliente}
+        activeOpacity={0.9}
+      >
         <Ionicons name="add" size={28} color="#ffffff" />
       </TouchableOpacity>
     </View>
@@ -83,36 +173,58 @@ function criarEstilos(t: AppTema) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: t.fundo },
     header: {
-      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-      paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16,
+      flexDirection: 'row', alignItems: 'center', gap: 14,
+      paddingHorizontal: 20, paddingTop: 60, paddingBottom: 14,
     },
-    voltarBotao: {
-      width: 36, height: 36, borderRadius: 10, backgroundColor: t.card,
-      borderWidth: 1, borderColor: t.borda, alignItems: 'center', justifyContent: 'center',
+    iconBtn: { width: 40, height: 40, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    titulo: { color: t.texto, fontSize: 18, fontWeight: '800', letterSpacing: -0.4 },
+    subtitulo: { fontSize: 12, marginTop: 1 },
+    novoBtn: {
+      width: 40, height: 40, borderRadius: 12,
+      alignItems: 'center', justifyContent: 'center', marginLeft: 'auto', flexShrink: 0,
+      shadowColor: '#16a34a', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4,
     },
-    titulo: { color: t.texto, fontSize: 18, fontWeight: '700' },
-    vazio: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
-    vazioTitulo: { color: t.textoSec, fontSize: 16, fontWeight: '600', marginTop: 14 },
-    vazioTexto: { color: t.textoFraco, fontSize: 13, textAlign: 'center', marginTop: 6 },
+    buscaBox: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      marginHorizontal: 20, marginBottom: 14, borderRadius: 13, borderWidth: 1, paddingHorizontal: 13,
+    },
+    buscaInput: { flex: 1, fontSize: 14, paddingVertical: 11 },
     lista: { paddingHorizontal: 20, paddingBottom: 100 },
+    listaVazia: { flexGrow: 1 },
+    vazio: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, gap: 8, paddingTop: 60 },
+    vazioIconeBox: {
+      width: 72, height: 72, borderRadius: 20, borderWidth: 1,
+      alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+    },
+    vazioTitulo: { fontSize: 16, fontWeight: '700' },
+    vazioTexto: { fontSize: 13, textAlign: 'center', lineHeight: 20 },
+    separadorRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, marginBottom: 6 },
+    separadorLetra: { fontSize: 12, fontWeight: '700', width: 14 },
+    separadorLinha: { flex: 1, height: 1 },
     card: {
-      flexDirection: 'row', backgroundColor: t.card, borderRadius: 16,
-      padding: 16, borderWidth: 1, borderColor: t.borda, marginBottom: 12, alignItems: 'center',
+      flexDirection: 'row', alignItems: 'center', borderRadius: 14, padding: 14,
+      borderWidth: 1, marginBottom: 8, gap: 12,
     },
-    cardIcone: {
-      width: 44, height: 44, borderRadius: 12, backgroundColor: '#16a34a22',
-      alignItems: 'center', justifyContent: 'center', marginRight: 14,
+    avatar: {
+      width: 46, height: 46, borderRadius: 14,
+      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     },
+    avatarTexto: { fontSize: 16, fontWeight: '800' },
     cardInfo: { flex: 1 },
-    cardNome: { color: t.texto, fontSize: 15, fontWeight: '600', marginBottom: 2 },
-    cardDetalhe: { color: t.textoSec, fontSize: 13, marginBottom: 2 },
-    cardLocal: { color: t.textoMuted, fontSize: 12 },
+    cardNome: { fontSize: 15, fontWeight: '700', letterSpacing: -0.2, marginBottom: 2 },
+    cardDoc: { fontSize: 12, marginBottom: 5 },
+    cardMetaRow: { flexDirection: 'row', gap: 12 },
+    metaItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+    metaTexto: { fontSize: 11 },
+    tagChip: {
+      width: 28, height: 28, borderRadius: 8, borderWidth: 1,
+      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    },
     fab: {
       position: 'absolute', right: 20, bottom: 30,
-      width: 56, height: 56, borderRadius: 28, backgroundColor: '#16a34a',
+      width: 56, height: 56, borderRadius: 28,
       alignItems: 'center', justifyContent: 'center',
-      shadowColor: '#16a34a', shadowOpacity: 0.4, shadowRadius: 12,
-      shadowOffset: { width: 0, height: 6 }, elevation: 6,
+      shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 6,
     },
   });
 }

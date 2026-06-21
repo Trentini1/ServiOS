@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-  View, Text, StyleSheet, TouchableOpacity, FlatList, RefreshControl,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { carregar } from '../utils/storage';
@@ -45,107 +43,147 @@ export default function AgendaScreen({ onVoltar, onAbrirOS }: Props) {
     setRecarregando(false);
   }
 
-  const marcadores = ordens.reduce<Record<string, any>>((acc, o) => {
-    if (!o.dataAgendada) return acc;
-    const cor = CORES_STATUS[o.status] ?? '#64748b';
-    if (!acc[o.dataAgendada]) acc[o.dataAgendada] = { dots: [] };
-    acc[o.dataAgendada].dots.push({ color: cor, key: o.id });
+  const marcadores = useMemo(() => {
+    const acc: Record<string, any> = {};
+    for (const o of ordens) {
+      if (!o.dataAgendada) continue;
+      const cor = CORES_STATUS[o.status] ?? '#64748b';
+      if (!acc[o.dataAgendada]) acc[o.dataAgendada] = { dots: [] };
+      acc[o.dataAgendada].dots.push({ color: cor, key: o.id });
+    }
+    acc[dataSelecionada] = {
+      ...(acc[dataSelecionada] ?? { dots: [] }),
+      selected: true,
+      selectedColor: tema.primario + '44',
+    };
     return acc;
-  }, {});
-
-  if (marcadores[dataSelecionada]) {
-    marcadores[dataSelecionada].selected = true;
-    marcadores[dataSelecionada].selectedColor = tema.primario + '33';
-  } else {
-    marcadores[dataSelecionada] = { dots: [], selected: true, selectedColor: tema.primario + '33' };
-  }
+  }, [ordens, dataSelecionada, tema.primario]);
 
   const ordensNaData = ordens.filter((o) => o.dataAgendada === dataSelecionada);
 
-  function formatarDataExibicao(iso: string) {
+  function formatarData(iso: string) {
     const [ano, mes, dia] = iso.split('-');
-    return `${dia}/${mes}/${ano}`;
+    const data = new Date(Number(ano), Number(mes) - 1, Number(dia));
+    return data.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
   }
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onVoltar} style={styles.voltarBotao}>
-          <Ionicons name="arrow-back" size={22} color="#ffffff" />
+        <TouchableOpacity onPress={onVoltar} style={[styles.iconBtn, { backgroundColor: tema.card, borderColor: tema.borda }]}>
+          <Ionicons name="arrow-back" size={20} color={tema.texto} />
         </TouchableOpacity>
-        <Text style={styles.titulo}>Agenda</Text>
-        <View style={{ width: 36 }} />
+        <View>
+          <Text style={styles.titulo}>Agenda</Text>
+          <Text style={[styles.subtitulo, { color: tema.textoMuted }]}>{ordens.length} OS agendadas</Text>
+        </View>
+        <View style={{ width: 40 }} />
       </View>
 
       <FlatList
         data={ordensNaData}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.lista}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={recarregando} onRefresh={recarregar}
             tintColor={tema.primario} colors={[tema.primario]} />
         }
         ListHeaderComponent={
           <>
-            <Calendar
-              current={dataSelecionada}
-              onDayPress={(day: { dateString: string }) => setDataSelecionada(day.dateString)}
-              markingType="multi-dot"
-              markedDates={marcadores}
-              theme={{
-                backgroundColor: tema.fundo,
-                calendarBackground: tema.card,
-                textSectionTitleColor: tema.textoMuted,
-                selectedDayBackgroundColor: tema.primario,
-                selectedDayTextColor: '#ffffff',
-                todayTextColor: tema.primario,
-                dayTextColor: '#e2e8f0',
-                textDisabledColor: tema.textoFraco,
-                dotColor: tema.primario,
-                selectedDotColor: '#ffffff',
-                arrowColor: tema.primario,
-                monthTextColor: '#ffffff',
-                textDayFontSize: 14,
-                textMonthFontSize: 15,
-                textMonthFontWeight: '700',
-                textDayHeaderFontSize: 12,
-              }}
-              style={styles.calendario}
-            />
-            <View style={styles.secaoHeader}>
-              <Ionicons name="calendar-outline" size={15} color={tema.textoMuted} />
-              <Text style={styles.secaoTitulo}>
-                {formatarDataExibicao(dataSelecionada)}{dataSelecionada === hoje ? '  (hoje)' : ''}
-              </Text>
+            {/* Calendário */}
+            <View style={[styles.calendarioBox, { borderColor: tema.borda }]}>
+              <Calendar
+                current={dataSelecionada}
+                onDayPress={(day: { dateString: string }) => setDataSelecionada(day.dateString)}
+                markingType="multi-dot"
+                markedDates={marcadores}
+                theme={{
+                  backgroundColor: 'transparent',
+                  calendarBackground: 'transparent',
+                  textSectionTitleColor: tema.textoMuted,
+                  selectedDayBackgroundColor: tema.primario,
+                  selectedDayTextColor: '#ffffff',
+                  todayTextColor: tema.primario,
+                  dayTextColor: tema.texto,
+                  textDisabledColor: tema.textoFraco,
+                  dotColor: tema.primario,
+                  selectedDotColor: '#ffffff',
+                  arrowColor: tema.primario,
+                  monthTextColor: tema.texto,
+                  textDayFontSize: 14,
+                  textMonthFontSize: 15,
+                  textMonthFontWeight: '700',
+                  textDayHeaderFontSize: 11,
+                }}
+              />
             </View>
+
+            {/* Separador de data */}
+            <View style={styles.dataHeader}>
+              <View style={[styles.dataIconeBox, { backgroundColor: tema.primario + '1a' }]}>
+                <Ionicons name="calendar" size={14} color={tema.primario} />
+              </View>
+              <View>
+                <Text style={[styles.dataTexto, { color: tema.texto }]} numberOfLines={1}>
+                  {formatarData(dataSelecionada)}
+                </Text>
+                {dataSelecionada === hoje && (
+                  <Text style={[styles.dataHoje, { color: tema.primario }]}>Hoje</Text>
+                )}
+              </View>
+              {ordensNaData.length > 0 && (
+                <View style={[styles.contadorBadge, { backgroundColor: tema.primario + '22' }]}>
+                  <Text style={[styles.contadorTexto, { color: tema.primario }]}>{ordensNaData.length}</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Vazio */}
             {ordensNaData.length === 0 && (
-              <View style={styles.vazio}>
-                <Ionicons name="calendar-clear-outline" size={36} color={tema.borda} />
-                <Text style={styles.vazioTexto}>Nenhuma OS agendada para este dia</Text>
+              <View style={[styles.vazio, { backgroundColor: tema.card, borderColor: tema.borda }]}>
+                <Ionicons name="calendar-clear-outline" size={32} color={tema.textoFraco} />
+                <Text style={[styles.vazioTexto, { color: tema.textoMuted }]}>Nenhuma OS neste dia</Text>
+                <Text style={[styles.vazioSub, { color: tema.textoFraco }]}>
+                  Crie uma OS e defina data de agendamento.
+                </Text>
               </View>
             )}
           </>
         }
-        renderItem={({ item }) => (
-          <TouchableOpacity style={styles.card} onPress={() => onAbrirOS(item.id)} activeOpacity={0.8}>
-            <View style={[styles.statusBarra, { backgroundColor: CORES_STATUS[item.status] }]} />
-            <View style={styles.cardConteudo}>
-              <View style={styles.cardTopo}>
-                <Text style={styles.cardCliente} numberOfLines={1}>{item.cliente}</Text>
-                <View style={[styles.badge, { backgroundColor: CORES_STATUS[item.status] + '22' }]}>
-                  <Text style={[styles.badgeTexto, { color: CORES_STATUS[item.status] }]}>{item.status}</Text>
+        renderItem={({ item }) => {
+          const cor = CORES_STATUS[item.status] ?? '#64748b';
+          return (
+            <TouchableOpacity
+              style={[styles.card, { backgroundColor: tema.card, borderColor: tema.borda }]}
+              onPress={() => onAbrirOS(item.id)}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.cardBarra, { backgroundColor: cor }]} />
+              <View style={styles.cardCorpo}>
+                <View style={styles.cardTop}>
+                  <Text style={[styles.cardCliente, { color: tema.texto }]} numberOfLines={1}>
+                    {item.cliente}
+                  </Text>
+                  <View style={[styles.badge, { backgroundColor: cor + '22' }]}>
+                    <Text style={[styles.badgeTexto, { color: cor }]}>{item.status}</Text>
+                  </View>
                 </View>
+                <Text style={[styles.cardDetalhe, { color: tema.textoSec }]} numberOfLines={1}>
+                  {item.motor}  ·  {item.tipoManutencao}
+                </Text>
+                {!!item.tecnicoResponsavel && (
+                  <View style={styles.tecnicoRow}>
+                    <Ionicons name="person-outline" size={11} color={tema.textoFraco} />
+                    <Text style={[styles.tecnicoTexto, { color: tema.textoFraco }]}>{item.tecnicoResponsavel}</Text>
+                  </View>
+                )}
               </View>
-              <Text style={styles.cardDetalhe}>{item.motor} · {item.tipoManutencao}</Text>
-              {!!item.tecnicoResponsavel && (
-                <View style={styles.tecnicoRow}>
-                  <Ionicons name="person-outline" size={12} color={tema.textoMuted} />
-                  <Text style={styles.tecnicoTexto}>{item.tecnicoResponsavel}</Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
-        )}
+              <Ionicons name="chevron-forward" size={16} color={tema.textoFraco} style={{ paddingHorizontal: 10 }} />
+            </TouchableOpacity>
+          );
+        }}
       />
     </View>
   );
@@ -155,35 +193,46 @@ function criarEstilos(t: AppTema) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: t.fundo },
     header: {
-      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      flexDirection: 'row', alignItems: 'center', gap: 14,
       paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16,
     },
-    voltarBotao: {
-      width: 36, height: 36, borderRadius: 10, backgroundColor: t.card,
-      borderWidth: 1, borderColor: t.borda, alignItems: 'center', justifyContent: 'center',
+    iconBtn: { width: 40, height: 40, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    titulo: { color: t.texto, fontSize: 18, fontWeight: '800', letterSpacing: -0.4 },
+    subtitulo: { fontSize: 12, marginTop: 1 },
+    lista: { paddingBottom: 48 },
+    calendarioBox: {
+      marginHorizontal: 16, borderRadius: 18, overflow: 'hidden',
+      borderWidth: 1, backgroundColor: t.card, marginBottom: 4,
     },
-    titulo: { color: t.texto, fontSize: 17, fontWeight: '700' },
-    calendario: {
-      marginHorizontal: 16, borderRadius: 16, overflow: 'hidden',
-      borderWidth: 1, borderColor: t.borda, marginBottom: 8,
+    dataHeader: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      paddingHorizontal: 20, paddingVertical: 16,
     },
-    secaoHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingVertical: 14 },
-    secaoTitulo: { color: t.textoSec, fontSize: 13, fontWeight: '600' },
-    lista: { paddingBottom: 40 },
-    vazio: { alignItems: 'center', paddingTop: 20, gap: 8 },
-    vazioTexto: { color: t.textoFraco, fontSize: 13 },
+    dataIconeBox: { width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+    dataTexto: { fontSize: 14, fontWeight: '700', textTransform: 'capitalize' },
+    dataHoje: { fontSize: 11, fontWeight: '600', marginTop: 1 },
+    contadorBadge: {
+      marginLeft: 'auto', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10,
+    },
+    contadorTexto: { fontSize: 12, fontWeight: '700' },
+    vazio: {
+      alignItems: 'center', padding: 28, marginHorizontal: 16,
+      borderRadius: 16, borderWidth: 1, borderStyle: 'dashed', gap: 6,
+    },
+    vazioTexto: { fontSize: 15, fontWeight: '600' },
+    vazioSub: { fontSize: 12, textAlign: 'center' },
     card: {
-      flexDirection: 'row', marginHorizontal: 16, marginBottom: 10,
-      backgroundColor: t.card, borderRadius: 14, borderWidth: 1, borderColor: t.borda, overflow: 'hidden',
+      flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 10,
+      borderRadius: 14, borderWidth: 1, overflow: 'hidden',
     },
-    statusBarra: { width: 4 },
-    cardConteudo: { flex: 1, padding: 14 },
-    cardTopo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-    cardCliente: { color: t.texto, fontSize: 14, fontWeight: '600', flex: 1, marginRight: 8 },
-    badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-    badgeTexto: { fontSize: 11, fontWeight: '700' },
-    cardDetalhe: { color: t.textoMuted, fontSize: 12, marginTop: 2 },
-    tecnicoRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
-    tecnicoTexto: { color: t.textoMuted, fontSize: 12 },
+    cardBarra: { width: 4, alignSelf: 'stretch' },
+    cardCorpo: { flex: 1, padding: 14 },
+    cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 },
+    cardCliente: { fontSize: 14, fontWeight: '700', flex: 1 },
+    badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, marginLeft: 8 },
+    badgeTexto: { fontSize: 10, fontWeight: '700' },
+    cardDetalhe: { fontSize: 12, marginBottom: 4 },
+    tecnicoRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    tecnicoTexto: { fontSize: 11 },
   });
 }

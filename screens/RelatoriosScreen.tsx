@@ -119,11 +119,14 @@ export default function RelatoriosScreen({ onVoltar }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={onVoltar} style={styles.voltarBotao}>
-          <Ionicons name="arrow-back" size={22} color="#ffffff" />
+        <TouchableOpacity onPress={onVoltar} style={[styles.voltarBotao, { backgroundColor: tema.card, borderColor: tema.borda }]}>
+          <Ionicons name="arrow-back" size={20} color={tema.texto} />
         </TouchableOpacity>
-        <Text style={styles.titulo}>Relatórios</Text>
-        <View style={{ width: 36 }} />
+        <View>
+          <Text style={styles.titulo}>Relatórios</Text>
+          <Text style={[styles.subtitulo, { color: tema.textoMuted }]}>{total} OS no período</Text>
+        </View>
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView
@@ -242,10 +245,11 @@ function criarEstilos(t: AppTema) {
       paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16,
     },
     voltarBotao: {
-      width: 36, height: 36, borderRadius: 10, backgroundColor: t.card,
-      borderWidth: 1, borderColor: t.borda, alignItems: 'center', justifyContent: 'center',
+      width: 40, height: 40, borderRadius: 12,
+      borderWidth: 1, alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     },
-    titulo: { color: t.texto, fontSize: 17, fontWeight: '700' },
+    titulo: { color: t.texto, fontSize: 18, fontWeight: '800', letterSpacing: -0.4 },
+    subtitulo: { fontSize: 12, marginTop: 1 },
     scroll: { padding: 16, paddingBottom: 40 },
     filtrosRow: { gap: 8, paddingBottom: 16 },
     filtroChip: {

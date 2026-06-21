@@ -24,6 +24,9 @@ const STATUS_OPCOES: OrdemServico['status'][] = ['Aberta', 'Em Andamento', 'Conc
 const CORES_STATUS: Record<string, string> = {
   Aberta: '#d97706', 'Em Andamento': '#2563eb', Concluída: '#16a34a',
 };
+const ICONES_STATUS: Record<string, string> = {
+  Aberta: 'radio-button-on-outline', 'Em Andamento': 'sync-outline', Concluída: 'checkmark-circle-outline',
+};
 
 export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
   const tema = useThema();
@@ -45,14 +48,23 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
     carregar<Empresa>('empresa').then(setEmpresa);
   }, [carregarOrdem]);
 
+  async function salvarCampo<K extends keyof OrdemServico>(campo: K, valor: OrdemServico[K]) {
+    if (!ordem) return;
+    const lista = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
+    const nova  = lista.map((o) => o.id === ordem.id ? { ...o, [campo]: valor } : o);
+    await salvar('ordensServico', nova);
+    setOrdem((prev) => prev ? { ...prev, [campo]: valor } : prev);
+    onAlterado();
+  }
+
   async function exportarPdf() {
     if (!ordem || !empresa) return;
     setGerandoPdf(true);
     try {
-      const pdfTemaOS = ordem.temaPdfId
-        ? PDF_TEMAS_PRESET.find((t) => t.id === ordem.temaPdfId) ?? pdfTemaPadrao
+      const pdfTema = ordem.temaPdfId
+        ? (PDF_TEMAS_PRESET.find((t) => t.id === ordem.temaPdfId) ?? pdfTemaPadrao)
         : pdfTemaPadrao;
-      await gerarESalvarPdfOS(ordem, empresa, pdfTemaOS);
+      await gerarESalvarPdfOS(ordem, empresa, pdfTema);
     } catch {
       Alert.alert('Erro', 'Não foi possível gerar o PDF.');
     } finally {
@@ -60,17 +72,8 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
     }
   }
 
-  async function salvarCampo<K extends keyof OrdemServico>(campo: K, valor: OrdemServico[K]) {
-    if (!ordem) return;
-    const lista = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
-    const novaLista = lista.map((o) => o.id === ordem.id ? { ...o, [campo]: valor } : o);
-    await salvar('ordensServico', novaLista);
-    setOrdem((prev) => prev ? { ...prev, [campo]: valor } : prev);
-    onAlterado();
-  }
-
   function confirmarExclusao() {
-    Alert.alert('Excluir Ordem de Serviço', 'Essa ação não pode ser desfeita. Deseja continuar?', [
+    Alert.alert('Excluir OS', 'Essa ação não pode ser desfeita.', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Excluir', style: 'destructive', onPress: excluirOrdem },
     ]);
@@ -88,133 +91,159 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={onVoltar} style={styles.voltarBotao}>
-            <Ionicons name="arrow-back" size={22} color="#ffffff" />
+          <TouchableOpacity onPress={onVoltar} style={[styles.iconBtn, { backgroundColor: tema.card, borderColor: tema.borda }]}>
+            <Ionicons name="arrow-back" size={20} color={tema.texto} />
           </TouchableOpacity>
-          <Text style={styles.titulo}>Ordem de Serviço</Text>
-          <View style={{ width: 36 }} />
+          <Text style={styles.headerTitulo}>Detalhes da OS</Text>
+          <View style={{ width: 40 }} />
         </View>
-        <Text style={[styles.naoEncontrado, { color: tema.textoMuted }]}>Ordem não encontrada.</Text>
+        <View style={styles.semDados}>
+          <Ionicons name="document-text-outline" size={48} color={tema.textoFraco} />
+          <Text style={[styles.semDadosTexto, { color: tema.textoMuted }]}>Ordem não encontrada.</Text>
+        </View>
       </View>
     );
   }
 
+  const corStatus = CORES_STATUS[ordem.status] ?? '#64748b';
   const pdfTemaAtivo = ordem.temaPdfId
-    ? PDF_TEMAS_PRESET.find((t) => t.id === ordem.temaPdfId) ?? pdfTemaPadrao
+    ? (PDF_TEMAS_PRESET.find((t) => t.id === ordem.temaPdfId) ?? pdfTemaPadrao)
     : pdfTemaPadrao;
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onVoltar} style={styles.voltarBotao}>
-          <Ionicons name="arrow-back" size={22} color="#ffffff" />
+        <TouchableOpacity onPress={onVoltar} style={[styles.iconBtn, { backgroundColor: tema.card, borderColor: tema.borda }]}>
+          <Ionicons name="arrow-back" size={20} color={tema.texto} />
         </TouchableOpacity>
-        <Text style={styles.titulo}>Detalhes da OS</Text>
+        <Text style={styles.headerTitulo}>Detalhes da OS</Text>
         <View style={styles.headerAcoes}>
-          <TouchableOpacity onPress={exportarPdf}
-            style={[styles.pdfBotao, { backgroundColor: tema.primario + '22', borderColor: tema.primario + '55' }, gerandoPdf && { opacity: 0.5 }]}
-            disabled={gerandoPdf}>
-            <Ionicons name="share-outline" size={18} color={tema.primario} />
+          <TouchableOpacity
+            onPress={exportarPdf}
+            style={[styles.iconBtn, { backgroundColor: tema.primario + '22', borderColor: tema.primario + '44' }, gerandoPdf && { opacity: 0.5 }]}
+            disabled={gerandoPdf}
+          >
+            <Ionicons name={gerandoPdf ? 'hourglass-outline' : 'share-outline'} size={18} color={tema.primario} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={confirmarExclusao} style={styles.excluirBotao}>
-            <Ionicons name="trash-outline" size={20} color="#f87171" />
+          <TouchableOpacity
+            onPress={confirmarExclusao}
+            style={[styles.iconBtn, { backgroundColor: '#f8717115', borderColor: '#f8717133' }]}
+          >
+            <Ionicons name="trash-outline" size={18} color="#f87171" />
           </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* Cliente */}
-        <View style={styles.card}>
-          <View style={styles.cardTopo}>
-            <View style={[styles.iconeCliente, { backgroundColor: tema.primario + '22' }]}>
-              <Ionicons name="business" size={22} color={tema.primario} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cliente}>{ordem.cliente}</Text>
-              <Text style={styles.data}>Criada em {ordem.dataCriacao}</Text>
-              {!!ordem.clienteTelefone && (
-                <View style={styles.telefoneRow}>
-                  <Ionicons name="call-outline" size={13} color={tema.textoMuted} />
-                  <Text style={styles.telefone}>{ordem.clienteTelefone}</Text>
-                </View>
-              )}
-            </View>
+        {/* Banner do cliente */}
+        <View style={[styles.clienteBanner, { backgroundColor: tema.card, borderColor: corStatus + '44' }]}>
+          <View style={[styles.clienteAvatar, { backgroundColor: corStatus + '22' }]}>
+            <Ionicons name="business" size={24} color={corStatus} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.clienteNome, { color: tema.texto }]}>{ordem.cliente}</Text>
+            {!!ordem.clienteTelefone && (
+              <View style={styles.clienteTelRow}>
+                <Ionicons name="call-outline" size={12} color={tema.textoMuted} />
+                <Text style={[styles.clienteTel, { color: tema.textoMuted }]}>{ordem.clienteTelefone}</Text>
+              </View>
+            )}
+            <Text style={[styles.clienteData, { color: tema.textoFraco }]}>Criada em {ordem.dataCriacao}</Text>
+          </View>
+          <View style={[styles.statusPill, { backgroundColor: corStatus + '22', borderColor: corStatus + '66' }]}>
+            <Ionicons name={ICONES_STATUS[ordem.status] as any} size={13} color={corStatus} />
+            <Text style={[styles.statusPillTexto, { color: corStatus }]}>{ordem.status}</Text>
           </View>
         </View>
 
         {/* Informações técnicas */}
-        <View style={styles.card}>
-          <Text style={styles.secaoTitulo}>Informações técnicas</Text>
-          {[
-            { icone: 'cog-outline', label: 'Motor / Equipamento', valor: ordem.motor },
-            { icone: 'locate-outline', label: 'Posição', valor: ordem.posicao },
-            { icone: 'construct-outline', label: 'Tipo de manutenção', valor: ordem.tipoManutencao },
-            ordem.descricao ? { icone: 'document-text-outline', label: 'Descrição', valor: ordem.descricao } : null,
-            ordem.tecnicoResponsavel ? { icone: 'person-outline', label: 'Técnico responsável', valor: ordem.tecnicoResponsavel } : null,
-            ordem.dataAgendada ? { icone: 'calendar-outline', label: 'Data agendada', valor: ordem.dataAgendada.split('-').reverse().join('/') } : null,
-          ].filter(Boolean).map((item, idx) => (
-            <View key={idx} style={idx > 0 ? { marginTop: 14 } : {}}>
-              <View style={styles.infoLinha}>
-                <Ionicons name={(item as any).icone as any} size={16} color={tema.textoMuted} />
-                <Text style={styles.infoLabel}>{(item as any).label}</Text>
+        <SecaoCard titulo="Informações Técnicas" icone="construct-outline" tema={tema}>
+          <View style={styles.infoGrid}>
+            {[
+              { label: 'Motor / Equipamento', valor: ordem.motor,          icone: 'cog-outline'         },
+              { label: 'Posição',              valor: ordem.posicao,        icone: 'locate-outline'      },
+              { label: 'Tipo de Manutenção',   valor: ordem.tipoManutencao, icone: 'build-outline'       },
+              ordem.tecnicoResponsavel ? { label: 'Técnico Responsável', valor: ordem.tecnicoResponsavel, icone: 'person-outline' } : null,
+              ordem.dataAgendada       ? { label: 'Data Agendada',       valor: ordem.dataAgendada.split('-').reverse().join('/'), icone: 'calendar-outline' } : null,
+            ].filter(Boolean).map((item: any, i) => (
+              <View key={i} style={[styles.infoItem, i % 2 === 1 && { borderLeftWidth: 1, borderLeftColor: tema.borda }]}>
+                <View style={styles.infoItemHeader}>
+                  <Ionicons name={item.icone} size={12} color={tema.textoMuted} />
+                  <Text style={[styles.infoLabel, { color: tema.textoMuted }]}>{item.label}</Text>
+                </View>
+                <Text style={[styles.infoValor, { color: tema.texto }]}>{item.valor}</Text>
               </View>
-              <Text style={styles.infoValor}>{(item as any).valor}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Status */}
-        <View style={styles.card}>
-          <Text style={styles.secaoTitulo}>Status</Text>
-          <View style={styles.statusOpcoes}>
-            {STATUS_OPCOES.map((opcao) => (
-              <TouchableOpacity
-                key={opcao}
-                style={[styles.statusChip,
-                  { borderColor: tema.borda },
-                  ordem.status === opcao && { backgroundColor: CORES_STATUS[opcao], borderColor: CORES_STATUS[opcao] }]}
-                onPress={() => salvarCampo('status', opcao)}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.statusChipTexto,
-                  ordem.status === opcao && styles.statusChipTextoAtivo]}>
-                  {opcao}
-                </Text>
-              </TouchableOpacity>
             ))}
           </View>
-        </View>
+          {!!ordem.descricao && (
+            <View style={[styles.descricaoBox, { backgroundColor: tema.fundo, borderColor: tema.borda }]}>
+              <Text style={[styles.descricaoLabel, { color: tema.textoMuted }]}>Descrição do Serviço</Text>
+              <Text style={[styles.descricaoTexto, { color: tema.textoSec }]}>{ordem.descricao}</Text>
+            </View>
+          )}
+        </SecaoCard>
+
+        {/* Status */}
+        <SecaoCard titulo="Alterar Status" icone="swap-horizontal-outline" tema={tema}>
+          <View style={styles.statusOpcoes}>
+            {STATUS_OPCOES.map((op) => {
+              const ativo = ordem.status === op;
+              const c     = CORES_STATUS[op];
+              return (
+                <TouchableOpacity
+                  key={op}
+                  style={[
+                    styles.statusChip,
+                    { borderColor: ativo ? c : tema.borda, backgroundColor: ativo ? c + '22' : tema.fundo },
+                  ]}
+                  onPress={() => salvarCampo('status', op)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name={ICONES_STATUS[op] as any} size={14} color={ativo ? c : tema.textoMuted} />
+                  <Text style={[styles.statusChipTexto, { color: ativo ? c : tema.textoMuted, fontWeight: ativo ? '700' : '500' }]}>
+                    {op}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </SecaoCard>
 
         {/* Períodos */}
-        <View style={styles.card}>
-          <Text style={styles.secaoTitulo}>Períodos de execução</Text>
-          <PeriodosExecucao dias={ordem.diasExecucao ?? []} onChange={(dias) => salvarCampo('diasExecucao', dias)} />
-        </View>
+        <SecaoCard titulo="Períodos de Execução" icone="time-outline" tema={tema}>
+          <PeriodosExecucao
+            dias={ordem.diasExecucao ?? []}
+            onChange={(dias) => salvarCampo('diasExecucao', dias)}
+          />
+        </SecaoCard>
 
         {/* Peças */}
-        <View style={styles.card}>
-          <Text style={styles.secaoTitulo}>Peças utilizadas</Text>
-          <PecasUtilizadas pecas={ordem.pecas ?? []} onChange={(p) => salvarCampo('pecas', p)} />
-        </View>
+        <SecaoCard titulo="Peças Utilizadas" icone="hardware-chip-outline" tema={tema}>
+          <PecasUtilizadas
+            pecas={ordem.pecas ?? []}
+            onChange={(p) => salvarCampo('pecas', p)}
+          />
+        </SecaoCard>
 
-        {/* Tema do PDF desta OS */}
-        <View style={styles.card}>
-          <Text style={styles.secaoTitulo}>Tema do PDF desta OS</Text>
+        {/* Tema do PDF */}
+        <SecaoCard titulo="Tema do PDF desta OS" icone="document-text-outline" tema={tema}>
           <View style={styles.pdfTemasRow}>
             {PDF_TEMAS_PRESET.map((pdfT) => {
               const ativo = pdfTemaAtivo.id === pdfT.id;
               return (
                 <TouchableOpacity
                   key={pdfT.id}
-                  style={[styles.pdfTemaChip,
-                    { borderColor: ativo ? pdfT.corHeader : tema.borda },
-                    ativo && { backgroundColor: pdfT.corHeader + '22' }]}
+                  style={[
+                    styles.pdfTemaChip,
+                    { borderColor: ativo ? pdfT.corHeader : tema.borda, backgroundColor: ativo ? pdfT.corHeader + '1a' : tema.fundo },
+                  ]}
                   onPress={() => salvarCampo('temaPdfId', pdfT.id)}
                   activeOpacity={0.8}
                 >
                   <View style={[styles.pdfTemaColor, { backgroundColor: pdfT.corHeader }]} />
-                  <Text style={[styles.pdfTemaTexto, ativo && { color: pdfT.corHeader }]}>
+                  <Text style={[styles.pdfTemaTexto, { color: ativo ? pdfT.corHeader : tema.textoSec }]}>
                     {pdfT.nome.split(' ')[0]}
                   </Text>
                   {ativo && <Ionicons name="checkmark" size={10} color={pdfT.corHeader} />}
@@ -222,51 +251,86 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
               );
             })}
           </View>
-        </View>
+        </SecaoCard>
 
         {/* Assinaturas */}
-        <View style={styles.card}>
-          <Text style={styles.secaoTitulo}>Assinaturas</Text>
-          {(['tecnico', 'cliente'] as const).map((tipo) => {
-            const campo = tipo === 'tecnico' ? 'assinaturaTecnico' : 'assinaturaCliente';
+        <SecaoCard titulo="Assinaturas" icone="create-outline" tema={tema}>
+          {(['tecnico', 'cliente'] as const).map((tipo, i) => {
+            const campo     = tipo === 'tecnico' ? 'assinaturaTecnico' : 'assinaturaCliente';
             const assinatura = ordem[campo];
+            const label     = tipo === 'tecnico' ? 'Técnico' : 'Cliente';
             return (
-              <View key={tipo} style={[styles.assinaturaLinha, tipo === 'cliente' && { marginTop: 16 }]}>
-                <Text style={styles.assinaturaLabel}>{tipo === 'tecnico' ? 'Técnico' : 'Cliente'}</Text>
-                {assinatura ? (
-                  <TouchableOpacity onPress={() => setModalAssinatura(tipo)}>
-                    <Image source={{ uri: assinatura }} style={styles.assinaturaImagem} resizeMode="contain" />
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    style={[styles.assinaturaBotao, { backgroundColor: tema.primario + '22', borderColor: tema.primario + '55' }]}
-                    onPress={() => setModalAssinatura(tipo)} activeOpacity={0.8}
-                  >
-                    <Ionicons name="create-outline" size={16} color={tema.primario} />
-                    <Text style={[styles.assinaturaBotaoTexto, { color: tema.primario }]}>Assinar</Text>
-                  </TouchableOpacity>
-                )}
+              <View key={tipo} style={[styles.assinaturaRow, i > 0 && { borderTopWidth: 1, borderTopColor: tema.borda, marginTop: 14, paddingTop: 14 }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.assinaturaLabel, { color: tema.textoSec }]}>{label}</Text>
+                  {assinatura ? (
+                    <TouchableOpacity onPress={() => setModalAssinatura(tipo)} activeOpacity={0.8}>
+                      <Image source={{ uri: assinatura }} style={[styles.assinaturaImg, { borderColor: tema.borda }]} resizeMode="contain" />
+                      <Text style={[styles.assinaturaTrocar, { color: tema.primario }]}>Tocar para refazer</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={[styles.assinarBtn, { backgroundColor: tema.primario + '1a', borderColor: tema.primario + '44' }]}
+                      onPress={() => setModalAssinatura(tipo)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="create-outline" size={15} color={tema.primario} />
+                      <Text style={[styles.assinarBtnTexto, { color: tema.primario }]}>Assinar</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             );
           })}
-        </View>
+        </SecaoCard>
 
         {/* Fotos */}
-        <View style={styles.card}>
-          <Text style={styles.secaoTitulo}>Fotos</Text>
+        <SecaoCard titulo="Fotos" icone="camera-outline" tema={tema}>
           <FotosOS fotos={ordem.fotos ?? []} onChange={(f) => salvarCampo('fotos', f)} maxFotos={10} />
-        </View>
+        </SecaoCard>
+
       </ScrollView>
 
       <SignatureModal
         visivel={modalAssinatura !== null}
         titulo={modalAssinatura === 'tecnico' ? 'Assinatura do Técnico' : 'Assinatura do Cliente'}
         onFechar={() => setModalAssinatura(null)}
-        onSalvar={(b64) => { if (modalAssinatura) salvarCampo(modalAssinatura === 'tecnico' ? 'assinaturaTecnico' : 'assinaturaCliente', b64); }}
+        onSalvar={(b64) => {
+          if (modalAssinatura) {
+            salvarCampo(modalAssinatura === 'tecnico' ? 'assinaturaTecnico' : 'assinaturaCliente', b64);
+          }
+        }}
       />
     </View>
   );
 }
+
+function SecaoCard({
+  titulo, icone, tema, children,
+}: {
+  titulo: string; icone: string; tema: AppTema; children: React.ReactNode;
+}) {
+  return (
+    <View style={{ marginBottom: 12 }}>
+      <View style={secaoStyles.headerRow}>
+        <View style={[secaoStyles.iconeBox, { backgroundColor: tema.primario + '18' }]}>
+          <Ionicons name={icone as any} size={14} color={tema.primario} />
+        </View>
+        <Text style={[secaoStyles.titulo, { color: tema.textoSec }]}>{titulo}</Text>
+      </View>
+      <View style={[secaoStyles.corpo, { backgroundColor: tema.card, borderColor: tema.borda }]}>
+        {children}
+      </View>
+    </View>
+  );
+}
+
+const secaoStyles = StyleSheet.create({
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 8, paddingHorizontal: 2 },
+  iconeBox: { width: 24, height: 24, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
+  titulo: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
+  corpo: { borderRadius: 16, padding: 16, borderWidth: 1 },
+});
 
 function criarEstilos(t: AppTema) {
   return StyleSheet.create({
@@ -275,64 +339,61 @@ function criarEstilos(t: AppTema) {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16,
     },
-    voltarBotao: {
-      width: 36, height: 36, borderRadius: 10, backgroundColor: t.card,
-      borderWidth: 1, borderColor: t.borda, alignItems: 'center', justifyContent: 'center',
-    },
+    headerTitulo: { color: t.texto, fontSize: 17, fontWeight: '700' },
     headerAcoes: { flexDirection: 'row', gap: 8 },
-    pdfBotao: {
-      width: 36, height: 36, borderRadius: 10, borderWidth: 1,
-      alignItems: 'center', justifyContent: 'center',
+    iconBtn: { width: 40, height: 40, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+    scroll: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 48 },
+    semDados: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
+    semDadosTexto: { fontSize: 15 },
+
+    clienteBanner: {
+      flexDirection: 'row', alignItems: 'center', gap: 14,
+      borderRadius: 16, padding: 16, borderWidth: 1, marginBottom: 20,
     },
-    excluirBotao: {
-      width: 36, height: 36, borderRadius: 10,
-      backgroundColor: '#f8717122', borderWidth: 1, borderColor: '#f8717155',
-      alignItems: 'center', justifyContent: 'center',
+    clienteAvatar: { width: 50, height: 50, borderRadius: 13, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    clienteNome: { fontSize: 17, fontWeight: '800', letterSpacing: -0.3 },
+    clienteTelRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+    clienteTel: { fontSize: 12 },
+    clienteData: { fontSize: 11, marginTop: 2 },
+    statusPill: {
+      flexDirection: 'row', alignItems: 'center', gap: 5,
+      paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1,
+      alignSelf: 'flex-start', flexShrink: 0,
     },
-    titulo: { color: t.texto, fontSize: 17, fontWeight: '700' },
-    naoEncontrado: { textAlign: 'center', marginTop: 40 },
-    scrollContent: { padding: 20, paddingTop: 4, paddingBottom: 40 },
-    card: {
-      backgroundColor: t.card, borderRadius: 16, padding: 18,
-      borderWidth: 1, borderColor: t.borda, marginBottom: 14,
-    },
-    cardTopo: { flexDirection: 'row', alignItems: 'center' },
-    iconeCliente: {
-      width: 46, height: 46, borderRadius: 12,
-      alignItems: 'center', justifyContent: 'center', marginRight: 14,
-    },
-    cliente: { color: t.texto, fontSize: 17, fontWeight: '700' },
-    data: { color: t.textoMuted, fontSize: 12, marginTop: 2 },
-    telefoneRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-    telefone: { color: t.textoMuted, fontSize: 12 },
-    secaoTitulo: {
-      color: t.textoSec, fontSize: 13, fontWeight: '600',
-      marginBottom: 14, textTransform: 'uppercase', letterSpacing: 0.5,
-    },
-    infoLinha: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    infoLabel: { color: t.textoMuted, fontSize: 12 },
-    infoValor: { color: t.texto, fontSize: 15, marginTop: 4, marginLeft: 22 },
+    statusPillTexto: { fontSize: 11, fontWeight: '700' },
+
+    infoGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+    infoItem: { width: '50%', paddingVertical: 10, paddingHorizontal: 2 },
+    infoItemHeader: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    infoLabel: { fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3 },
+    infoValor: { fontSize: 14, fontWeight: '600', marginTop: 3 },
+    descricaoBox: { borderRadius: 10, padding: 12, borderWidth: 1, marginTop: 12 },
+    descricaoLabel: { fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 5 },
+    descricaoTexto: { fontSize: 13, lineHeight: 20 },
+
     statusOpcoes: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     statusChip: {
-      paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20,
-      backgroundColor: t.fundo, borderWidth: 1,
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, borderWidth: 1,
     },
-    statusChipTexto: { color: t.textoMuted, fontSize: 13, fontWeight: '600' },
-    statusChipTextoAtivo: { color: '#ffffff' },
+    statusChipTexto: { fontSize: 13 },
+
     pdfTemasRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     pdfTemaChip: {
       flexDirection: 'row', alignItems: 'center', gap: 5,
       paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10, borderWidth: 1,
     },
     pdfTemaColor: { width: 10, height: 10, borderRadius: 5 },
-    pdfTemaTexto: { color: t.textoSec, fontSize: 11, fontWeight: '600' },
-    assinaturaLinha: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    assinaturaLabel: { color: t.textoSec, fontSize: 13, fontWeight: '500' },
-    assinaturaImagem: { width: 140, height: 60, backgroundColor: '#ffffff', borderRadius: 8 },
-    assinaturaBotao: {
-      flexDirection: 'row', alignItems: 'center', gap: 6,
-      borderWidth: 1, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8,
+    pdfTemaTexto: { fontSize: 11, fontWeight: '600' },
+
+    assinaturaRow: { flexDirection: 'row', alignItems: 'flex-start' },
+    assinaturaLabel: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10 },
+    assinaturaImg: { width: '100%', height: 80, backgroundColor: '#ffffff', borderRadius: 10, borderWidth: 1 },
+    assinaturaTrocar: { fontSize: 11, textAlign: 'center', marginTop: 5 },
+    assinarBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center',
+      borderWidth: 1, paddingVertical: 12, borderRadius: 10, borderStyle: 'dashed',
     },
-    assinaturaBotaoTexto: { fontSize: 13, fontWeight: '600' },
+    assinarBtnTexto: { fontSize: 13, fontWeight: '600' },
   });
 }
