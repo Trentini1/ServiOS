@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import auth from '@react-native-firebase/auth';
 import LoginScreen from './screens/LoginScreen';
 import CompanyRegisterScreen from './screens/CompanyRegisterScreen';
 import HomeScreen from './screens/HomeScreen';
@@ -22,7 +23,7 @@ import CamposOSScreen from './screens/CamposOSScreen';
 import LogoEmpresaScreen from './screens/LogoEmpresaScreen';
 import PromoProScreen from './screens/PromoProScreen';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { salvar, carregar, remover } from './utils/storage';
+import { salvar, carregar, remover } from './utils/cloudStorage';
 
 type Empresa = {
   nome: string; cnpj: string; telefone: string;
@@ -53,24 +54,21 @@ function AppInner() {
   const [mostrarPromo, setMostrarPromo]           = useState(false);
 
   useEffect(() => {
-    (async () => {
-      const usuarioSalvo = await carregar<Usuario | string>('usuarioLogado');
-      const empresaSalva = await carregar<Empresa>('empresa');
-      if (usuarioSalvo) {
-        if (typeof usuarioSalvo === 'string') {
-          await remover('usuarioLogado');
-        } else {
-          setUsuarioLogado(usuarioSalvo);
-        }
-      }
-      if (empresaSalva) setEmpresa(empresaSalva);
-      // Mostra promo apenas para usuários sem plano Pro
-      const plano = await carregar<string>('plano');
-      if (usuarioSalvo && typeof usuarioSalvo !== 'string' && empresaSalva && plano !== 'pro') {
-        setMostrarPromo(true);
+    const unsubscribe = auth().onAuthStateChanged(async (firebaseUser) => {
+      if (firebaseUser) {
+        const nome = firebaseUser.displayName ?? firebaseUser.email?.split('@')[0] ?? 'Usuário';
+        setUsuarioLogado({ nome, email: firebaseUser.email ?? '', senha: '' });
+        const empresaSalva = await carregar<Empresa>('empresa');
+        if (empresaSalva) setEmpresa(empresaSalva);
+        const plano = await carregar<string>('plano');
+        if (empresaSalva && plano !== 'pro') setMostrarPromo(true);
+      } else {
+        setUsuarioLogado(null);
+        setEmpresa(null);
       }
       setCarregandoApp(false);
-    })();
+    });
+    return unsubscribe;
   }, []);
 
   function irPara(tela: Tela) {
@@ -89,10 +87,9 @@ function AppInner() {
   }
 
   async function handleSair() {
-    setUsuarioLogado(null);
-    setEmpresa(null);
     setTelaAtual('home');
-    await remover('usuarioLogado');
+    setEmpresa(null);
+    await auth().signOut();
   }
 
   function handleAbrirMenu(id: string) {

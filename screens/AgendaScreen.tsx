@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+﻿import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList,
   RefreshControl, Modal, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
-import { carregar, salvar } from '../utils/storage';
+import { carregar, salvar } from '../utils/cloudStorage';
 import type { OrdemServico } from './OSListScreen';
 import type { Tecnico } from './TecnicosListScreen';
 import { useThema } from '../contexts/ThemeContext';

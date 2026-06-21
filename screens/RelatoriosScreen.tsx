@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+﻿import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { carregar } from '../utils/storage';
+import { carregar } from '../utils/cloudStorage';
 import type { OrdemServico } from './OSListScreen';
 import type { Cliente } from './ClientListScreen';
 import { useThema } from '../contexts/ThemeContext';

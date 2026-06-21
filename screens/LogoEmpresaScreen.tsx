@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   Image, Alert, ActivityIndicator,
@@ -6,7 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { carregar, salvar, remover } from '../utils/storage';
+import { carregar, salvar, remover } from '../utils/cloudStorage';
 import { useThema } from '../contexts/ThemeContext';
 import { AppTema } from '../utils/temas';
 

@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+﻿import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { carregar, salvar } from '../utils/storage';
+import { carregar, salvar } from '../utils/cloudStorage';
 import type { OrdemServico, DiaExecucao, PecaUtilizada } from './OSListScreen';
 import SignatureModal from '../components/SignatureModal';
 import FotosOS from '../components/FotosOS';

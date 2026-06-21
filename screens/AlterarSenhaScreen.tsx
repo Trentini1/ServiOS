@@ -3,12 +3,11 @@ import {
   View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { carregar, salvar } from '../utils/storage';
+import auth from '@react-native-firebase/auth';
 import { useThema } from '../contexts/ThemeContext';
 import { AppTema } from '../utils/temas';
 
 type Props = { onVoltar: () => void };
-type Usuario = { nome: string; email: string; senha: string };
 
 type CampoProps = {
   label: string; value: string; onChange: (v: string) => void;
@@ -54,47 +53,47 @@ export default function AlterarSenhaScreen({ onVoltar }: Props) {
 
   async function handleSalvar() {
     if (!senhaAtual.trim() || !novaSenha.trim() || !confirmar.trim()) {
-      Alert.alert('Campos obrigatórios', 'Preencha todos os campos.');
-      return;
+      Alert.alert('Campos obrigatórios', 'Preencha todos os campos.'); return;
     }
     if (novaSenha.length < 6) {
-      Alert.alert('Senha fraca', 'A nova senha deve ter pelo menos 6 caracteres.');
-      return;
+      Alert.alert('Senha fraca', 'A nova senha deve ter pelo menos 6 caracteres.'); return;
     }
     if (novaSenha !== confirmar) {
-      Alert.alert('Senhas diferentes', 'A nova senha e a confirmação não coincidem.');
-      return;
+      Alert.alert('Senhas diferentes', 'A nova senha e a confirmação não coincidem.'); return;
     }
 
-    const usuarioLogado = await carregar<Usuario>('usuarioLogado');
-    if (!usuarioLogado) {
-      Alert.alert('Erro', 'Sessão expirada. Faça login novamente.');
-      return;
-    }
-    if (usuarioLogado.senha !== senhaAtual) {
-      Alert.alert('Senha incorreta', 'A senha atual está incorreta.');
-      return;
+    const user = auth().currentUser;
+    if (!user || !user.email) {
+      Alert.alert('Erro', 'Sessão expirada. Faça login novamente.'); return;
     }
 
     setSalvando(true);
-    const usuarios = await carregar<Usuario[]>('usuarios') ?? [];
-    const atualizados = usuarios.map((u) =>
-      u.email === usuarioLogado.email ? { ...u, senha: novaSenha } : u
-    );
-    await salvar('usuarios', atualizados);
-    await salvar('usuarioLogado', { ...usuarioLogado, senha: novaSenha });
-    setSalvando(false);
-
-    Alert.alert('Senha alterada!', 'Sua senha foi atualizada com sucesso.', [
-      { text: 'OK', onPress: onVoltar },
-    ]);
+    try {
+      // Re-autentica com a senha atual antes de trocar
+      const credencial = auth.EmailAuthProvider.credential(user.email, senhaAtual);
+      await user.reauthenticateWithCredential(credencial);
+      await user.updatePassword(novaSenha);
+      Alert.alert('Senha alterada!', 'Sua senha foi atualizada com sucesso.', [
+        { text: 'OK', onPress: onVoltar },
+      ]);
+    } catch (e: any) {
+      const msgs: Record<string, string> = {
+        'auth/wrong-password':       'Senha atual incorreta.',
+        'auth/too-many-requests':    'Muitas tentativas. Aguarde alguns minutos.',
+        'auth/network-request-failed': 'Sem conexão. Verifique sua internet.',
+        'auth/invalid-credential':   'Senha atual incorreta.',
+      };
+      Alert.alert('Erro', msgs[e.code] ?? 'Não foi possível alterar a senha. Tente novamente.');
+    } finally {
+      setSalvando(false);
+    }
   }
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={onVoltar} style={styles.voltarBotao}>
-          <Ionicons name="arrow-back" size={22} color="#ffffff" />
+          <Ionicons name="arrow-back" size={22} color={tema.texto} />
         </TouchableOpacity>
         <Text style={styles.titulo}>Alterar Senha</Text>
         <View style={{ width: 36 }} />
@@ -104,7 +103,7 @@ export default function AlterarSenhaScreen({ onVoltar }: Props) {
         <View style={[styles.infoCard, { backgroundColor: tema.card, borderColor: tema.borda }]}>
           <Ionicons name="shield-checkmark-outline" size={16} color={tema.primario} />
           <Text style={[styles.infoTexto, { color: tema.textoSec }]}>
-            Use uma senha com pelo menos 6 caracteres, com letras e números.
+            Use uma senha com pelo menos 6 caracteres. Você precisará confirmar a senha atual antes de trocar.
           </Text>
         </View>
 

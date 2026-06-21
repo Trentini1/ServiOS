@@ -1,10 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, Alert, ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { carregar, salvar } from '../utils/storage';
+import { carregar, salvar } from '../utils/cloudStorage';
 import type { Tecnico } from './TecnicosListScreen';
 import { useThema } from '../contexts/ThemeContext';
 import { AppTema } from '../utils/temas';

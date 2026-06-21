@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { carregar, salvar } from '../utils/storage';
+import { carregar, salvar } from '../utils/cloudStorage';
 import { useThema } from '../contexts/ThemeContext';
 import { AppTema } from '../utils/temas';
 import {

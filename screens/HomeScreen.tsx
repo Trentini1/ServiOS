@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { carregar } from '../utils/storage';
+import { carregar } from '../utils/cloudStorage';
 import { useThema } from '../contexts/ThemeContext';
 import { AppTema } from '../utils/temas';
 import type { OrdemServico } from './OSListScreen';

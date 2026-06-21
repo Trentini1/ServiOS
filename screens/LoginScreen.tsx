@@ -5,30 +5,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import auth from '@react-native-firebase/auth';
 import { useThema } from '../contexts/ThemeContext';
 import { AppTema } from '../utils/temas';
 
-type Usuario = { nome: string; email: string; senha: string };
-
-const CHAVE_USUARIOS = 'usuarios';
-const USUARIO_PADRAO: Usuario = { nome: 'Técnico Teste', email: 'teste@servios.com', senha: '123456' };
-
-async function carregarUsuarios(): Promise<Usuario[]> {
-  try {
-    const json = await AsyncStorage.getItem(CHAVE_USUARIOS);
-    if (json) return JSON.parse(json);
-    await AsyncStorage.setItem(CHAVE_USUARIOS, JSON.stringify([USUARIO_PADRAO]));
-    return [USUARIO_PADRAO];
-  } catch {
-    return [USUARIO_PADRAO];
-  }
-}
-
-async function salvarUsuarios(lista: Usuario[]) {
-  try { await AsyncStorage.setItem(CHAVE_USUARIOS, JSON.stringify(lista)); } catch {}
-}
-
+type Usuario = { nome: string; email: string };
 type Props = { onLoginSuccess: (usuario: Usuario) => void };
 
 export default function LoginScreen({ onLoginSuccess }: Props) {
@@ -43,7 +24,6 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
   const [verSenha, setVerSenha] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [larguraToggle, setLarguraToggle] = useState(0);
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
 
   const fadeAnim      = useRef(new Animated.Value(0)).current;
   const slideAnim     = useRef(new Animated.Value(24)).current;
@@ -51,7 +31,6 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
   const indicadorAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    carregarUsuarios().then(setUsuarios);
     Animated.parallel([
       Animated.timing(fadeAnim,  { toValue: 1, duration: 600, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
@@ -78,35 +57,56 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
     ]).start(callback);
   }
 
+  function mensagemErroFirebase(code: string): string {
+    const msgs: Record<string, string> = {
+      'auth/user-not-found':       'E-mail não cadastrado.',
+      'auth/wrong-password':       'Senha incorreta.',
+      'auth/invalid-credential':   'E-mail ou senha incorretos.',
+      'auth/email-already-in-use': 'Já existe uma conta com esse e-mail.',
+      'auth/invalid-email':        'E-mail inválido.',
+      'auth/too-many-requests':    'Muitas tentativas. Aguarde alguns minutos.',
+      'auth/network-request-failed': 'Sem conexão com a internet.',
+      'auth/weak-password':        'Senha muito fraca. Use pelo menos 6 caracteres.',
+    };
+    return msgs[code] ?? 'Erro ao autenticar. Tente novamente.';
+  }
+
   async function handleLogin() {
-    if (!email || !senha) { Alert.alert('Atenção', 'Preencha e-mail e senha.'); return; }
+    if (!email.trim() || !senha) {
+      Alert.alert('Atenção', 'Preencha e-mail e senha.'); return;
+    }
     setCarregando(true);
-    const lista = await carregarUsuarios();
-    setUsuarios(lista);
-    setCarregando(false);
-    const usuario = lista.find((u) => u.email === email.trim().toLowerCase() && u.senha === senha);
-    if (usuario) { onLoginSuccess(usuario); }
-    else { Alert.alert('Erro', 'E-mail ou senha incorretos.'); }
+    try {
+      const cred = await auth().signInWithEmailAndPassword(email.trim().toLowerCase(), senha);
+      const displayName = cred.user.displayName ?? email.split('@')[0];
+      onLoginSuccess({ nome: displayName, email: cred.user.email ?? email });
+    } catch (e: any) {
+      Alert.alert('Erro no login', mensagemErroFirebase(e.code));
+    } finally {
+      setCarregando(false);
+    }
   }
 
   async function handleCadastro() {
-    if (!nome || !email || !senha || !confirmarSenha) {
+    if (!nome.trim() || !email.trim() || !senha || !confirmarSenha) {
       Alert.alert('Atenção', 'Preencha todos os campos.'); return;
     }
-    if (senha !== confirmarSenha) { Alert.alert('Atenção', 'As senhas não coincidem.'); return; }
-    if (senha.length < 6) { Alert.alert('Atenção', 'A senha precisa ter pelo menos 6 caracteres.'); return; }
-    const emailNorm = email.trim().toLowerCase();
-    if (usuarios.some((u) => u.email === emailNorm)) {
-      Alert.alert('Atenção', 'Já existe uma conta com esse e-mail.'); return;
+    if (senha.length < 6) {
+      Alert.alert('Senha fraca', 'Use pelo menos 6 caracteres.'); return;
+    }
+    if (senha !== confirmarSenha) {
+      Alert.alert('Senhas diferentes', 'As senhas não coincidem.'); return;
     }
     setCarregando(true);
-    const novaLista = [...usuarios, { nome, email: emailNorm, senha }];
-    await salvarUsuarios(novaLista);
-    setUsuarios(novaLista);
-    setCarregando(false);
-    Alert.alert('Conta criada!', 'Agora faça login com suas credenciais.', [
-      { text: 'OK', onPress: () => { trocarModo('login'); setNome(''); setSenha(''); setConfirmarSenha(''); } },
-    ]);
+    try {
+      const cred = await auth().createUserWithEmailAndPassword(email.trim().toLowerCase(), senha);
+      await cred.user.updateProfile({ displayName: nome.trim() });
+      onLoginSuccess({ nome: nome.trim(), email: cred.user.email ?? email });
+    } catch (e: any) {
+      Alert.alert('Erro ao criar conta', mensagemErroFirebase(e.code));
+    } finally {
+      setCarregando(false);
+    }
   }
 
   const metade = larguraToggle / 2;
@@ -240,9 +240,17 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
           </Animated.View>
 
           {modo === 'login' && (
-            <Text style={[styles.hint, { color: tema.textoFraco }]}>
-              Acesso de teste: teste@servios.com · 123456
-            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                if (!email.trim()) { Alert.alert('Atenção', 'Digite seu e-mail acima.'); return; }
+                auth().sendPasswordResetEmail(email.trim().toLowerCase())
+                  .then(() => Alert.alert('E-mail enviado', 'Verifique sua caixa de entrada para redefinir a senha.'))
+                  .catch(() => Alert.alert('Erro', 'Não foi possível enviar o e-mail. Verifique o endereço.'));
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.hint, { color: tema.primario }]}>Esqueceu a senha?</Text>
+            </TouchableOpacity>
           )}
         </Animated.View>
       </ScrollView>
@@ -263,17 +271,7 @@ type InputFieldProps = {
 };
 
 function InputField({ icone, placeholder, value, onChangeText, secureTextEntry, autoCapitalize, keyboardType, tema, direita }: InputFieldProps) {
-  const isFocused = useRef(false);
   const borderAnim = useRef(new Animated.Value(0)).current;
-
-  function onFocus() {
-    isFocused.current = true;
-    Animated.timing(borderAnim, { toValue: 1, duration: 180, useNativeDriver: false }).start();
-  }
-  function onBlur() {
-    isFocused.current = false;
-    Animated.timing(borderAnim, { toValue: 0, duration: 180, useNativeDriver: false }).start();
-  }
 
   const borderColor = borderAnim.interpolate({
     inputRange: [0, 1],
@@ -296,8 +294,8 @@ function InputField({ icone, placeholder, value, onChangeText, secureTextEntry, 
         secureTextEntry={secureTextEntry}
         autoCapitalize={autoCapitalize ?? 'sentences'}
         keyboardType={keyboardType ?? 'default'}
-        onFocus={onFocus}
-        onBlur={onBlur}
+        onFocus={() => Animated.timing(borderAnim, { toValue: 1, duration: 180, useNativeDriver: false }).start()}
+        onBlur={() => Animated.timing(borderAnim, { toValue: 0, duration: 180, useNativeDriver: false }).start()}
       />
       {direita}
     </Animated.View>
@@ -331,8 +329,7 @@ function criarEstilos(t: AppTema) {
       marginBottom: 20, position: 'relative', overflow: 'hidden',
     },
     toggleIndicador: {
-      position: 'absolute', top: 4, left: 4, bottom: 4,
-      borderRadius: 10,
+      position: 'absolute', top: 4, left: 4, bottom: 4, borderRadius: 10,
     },
     toggleBtn: { flex: 1, paddingVertical: 11, alignItems: 'center', zIndex: 1 },
     toggleTexto: { color: t.textoMuted, fontWeight: '600', fontSize: 14 },
@@ -344,6 +341,6 @@ function criarEstilos(t: AppTema) {
       shadowOffset: { width: 0, height: 6 }, elevation: 6,
     },
     botaoTexto: { color: '#ffffff', fontSize: 16, fontWeight: '700' },
-    hint: { textAlign: 'center', fontSize: 11, marginTop: 16 },
+    hint: { textAlign: 'center', fontSize: 12, marginTop: 14, fontWeight: '600' },
   });
 }

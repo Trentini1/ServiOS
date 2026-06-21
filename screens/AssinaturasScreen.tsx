@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+﻿import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList,
   RefreshControl, Image, Modal, ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { carregar } from '../utils/storage';
+import { carregar } from '../utils/cloudStorage';
 import type { OrdemServico } from './OSListScreen';
 import { useThema } from '../contexts/ThemeContext';
 import { AppTema } from '../utils/temas';
