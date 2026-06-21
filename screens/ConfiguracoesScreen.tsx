@@ -9,7 +9,7 @@ const VERSAO  = '1.0.0';
 const ANO     = '2025';
 const CRIADOR = 'Erick Trentini';
 
-type SubTela = 'tema-app' | 'tema-pdf' | 'edicao-empresa' | 'alterar-senha';
+type SubTela = 'tema-app' | 'tema-pdf' | 'edicao-empresa' | 'alterar-senha' | 'licenca';
 type Props = { onVoltar: () => void; onNavegar: (tela: SubTela) => void };
 
 const MENU_APARENCIA = [
@@ -18,8 +18,12 @@ const MENU_APARENCIA = [
 ];
 
 const MENU_CONTA = [
-  { id: 'edicao-empresa' as SubTela, icone: 'business-outline',     cor: '#16a34a', titulo: 'Dados da Empresa', descricao: 'Nome, CNPJ, endereço e contato' },
-  { id: 'alterar-senha'  as SubTela, icone: 'lock-closed-outline',   cor: '#d97706', titulo: 'Alterar Senha',   descricao: 'Atualize a senha da sua conta'    },
+  { id: 'edicao-empresa' as SubTela, icone: 'business-outline',    cor: '#16a34a', titulo: 'Dados da Empresa', descricao: 'Nome, CNPJ, endereço e contato' },
+  { id: 'alterar-senha'  as SubTela, icone: 'lock-closed-outline',  cor: '#d97706', titulo: 'Alterar Senha',   descricao: 'Atualize a senha da sua conta'    },
+];
+
+const MENU_LICENCA = [
+  { id: 'licenca' as SubTela, icone: 'flash-outline', cor: '#6366f1', titulo: 'Minha Licença', descricao: 'Plano atual · Upgrade para Pro · R$ 50/mês' },
 ];
 
 type ItemMenu = typeof MENU_APARENCIA[number];
@@ -95,6 +99,30 @@ export default function ConfiguracoesScreen({ onVoltar, onNavegar }: Props) {
           </View>
         </View>
 
+        {/* Licença — destaque */}
+        <TouchableOpacity
+          style={[styles.licencaCard, { borderColor: '#6366f144' }]}
+          onPress={() => onNavegar('licenca')}
+          activeOpacity={0.85}
+        >
+          <LinearGradient
+            colors={['#6366f1', '#8b5cf6'] as any}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            style={styles.licencaGradient}
+          >
+            <View style={styles.licencaIconeBox}>
+              <Ionicons name="flash" size={20} color="#f59e0b" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.licencaTitulo}>Plano Gratuito</Text>
+              <Text style={styles.licencaSub}>Fazer upgrade para Pro · R$ 50/mês</Text>
+            </View>
+            <View style={styles.licencaArrow}>
+              <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.7)" />
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+
         {renderGrupo('Aparência', MENU_APARENCIA)}
         {renderGrupo('Conta & Empresa', MENU_CONTA)}
 
@@ -166,5 +194,19 @@ function criarEstilos(t: AppTema) {
     sobreLabel: { fontSize: 13 },
     sobreValor: { fontSize: 13, fontWeight: '600' },
     rodape: { textAlign: 'center', fontSize: 11, marginTop: 8 },
+    licencaCard: { borderRadius: 16, borderWidth: 1, overflow: 'hidden', marginBottom: 20 },
+    licencaGradient: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 14 },
+    licencaIconeBox: {
+      width: 40, height: 40, borderRadius: 12,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    licencaTitulo: { color: '#ffffff', fontSize: 15, fontWeight: '800' },
+    licencaSub: { color: 'rgba(255,255,255,0.75)', fontSize: 11, marginTop: 2 },
+    licencaArrow: {
+      width: 28, height: 28, borderRadius: 8,
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      alignItems: 'center', justifyContent: 'center',
+    },
   });
 }

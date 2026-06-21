@@ -200,7 +200,7 @@ export default function OSListScreen({ onVoltar, onNovaOS, onAbrirOS }: Props) {
       </View>
 
       {/* Status chips — compactos */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScroll}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScroll} style={styles.chipsScrollWrapper}>
         {STATUS_FILTROS.map((f) => {
           const ativo = statusFiltro === f;
           const cor = f === 'Todas' ? tema.primario : f === 'Abertas' ? '#d97706' : f === 'Em Andamento' ? '#2563eb' : '#16a34a';
@@ -408,14 +408,20 @@ function criarEstilos(t: AppTema) {
       alignItems: 'center', justifyContent: 'center',
     },
     filtroBadgeTexto: { color: '#fff', fontSize: 8, fontWeight: '700' },
-    chipsScroll: { paddingHorizontal: 20, paddingBottom: 10, gap: 6 },
+    chipsScrollWrapper: { flexGrow: 0, flexShrink: 0 },
+    chipsScroll: {
+      paddingHorizontal: 20, paddingBottom: 10, gap: 6,
+      alignItems: 'center', flexDirection: 'row',
+    },
     chip: {
       flexDirection: 'row', alignItems: 'center', gap: 5,
-      paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, borderWidth: 1,
+      paddingHorizontal: 11, paddingVertical: 6,
+      borderRadius: 20, borderWidth: 1,
+      alignSelf: 'flex-start',
     },
     chipTexto: { fontSize: 12, fontWeight: '600' },
     chipCount: {
-      minWidth: 16, height: 16, borderRadius: 8,
+      minWidth: 17, height: 17, borderRadius: 9,
       alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
     },
     chipCountTexto: { fontSize: 9, fontWeight: '700' },

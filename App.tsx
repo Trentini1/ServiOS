@@ -17,7 +17,7 @@ import TemaAppScreen from './screens/TemaAppScreen';
 import TemaPdfScreen from './screens/TemaPdfScreen';
 import EdicaoEmpresaScreen from './screens/EdicaoEmpresaScreen';
 import AlterarSenhaScreen from './screens/AlterarSenhaScreen';
-import AssinaturasScreen from './screens/AssinaturasScreen';
+import LicencaScreen from './screens/LicencaScreen';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { salvar, carregar, remover } from './utils/storage';
 
@@ -34,8 +34,8 @@ type Tela =
   | 'clientes-lista' | 'clientes-form'
   | 'agenda' | 'relatorios'
   | 'tecnicos-lista' | 'tecnicos-form' | 'tecnico-editar'
-  | 'configuracoes' | 'tema-app' | 'tema-pdf' | 'edicao-empresa' | 'alterar-senha'
-  | 'assinaturas';
+  | 'configuracoes' | 'tema-app' | 'tema-pdf'
+  | 'edicao-empresa' | 'alterar-senha' | 'licenca';
 
 function AppInner() {
   const [carregandoApp, setCarregandoApp] = useState(true);
@@ -88,7 +88,7 @@ function AppInner() {
   function handleAbrirMenu(id: string) {
     const mapa: Record<string, Tela> = {
       os: 'os-lista', clientes: 'clientes-lista', agenda: 'agenda',
-      relatorios: 'relatorios', tecnicos: 'tecnicos-lista', assinaturas: 'assinaturas',
+      relatorios: 'relatorios', tecnicos: 'tecnicos-lista',
     };
     if (mapa[id]) irPara(mapa[id]);
   }
@@ -117,7 +117,7 @@ function AppInner() {
   if (telaAtual === 'os-form') {
     return (
       <OSFormScreen
-        onVoltar={() => irPara(telaAnterior === 'agenda' ? 'agenda' : 'os-lista')}
+        onVoltar={() => { setDataAgendadaOS(undefined); irPara(telaAnterior === 'agenda' ? 'agenda' : 'os-lista'); }}
         onSalvo={() => { setDataAgendadaOS(undefined); irPara(telaAnterior === 'agenda' ? 'agenda' : 'os-lista'); }}
         onIrParaClientes={() => irPara('clientes-form')}
         dataAgendadaInicial={dataAgendadaOS}
@@ -129,7 +129,7 @@ function AppInner() {
     return (
       <OSDetailScreen
         osId={osSelecionadaId}
-        onVoltar={() => irPara(telaAnterior === 'agenda' ? 'agenda' : telaAnterior === 'assinaturas' ? 'assinaturas' : 'os-lista')}
+        onVoltar={() => irPara(telaAnterior === 'agenda' ? 'agenda' : 'os-lista')}
         onAlterado={() => {}}
       />
     );
@@ -158,20 +158,11 @@ function AppInner() {
       <AgendaScreen
         onVoltar={() => irPara('home')}
         onAbrirOS={(id) => { setOsSelecionadaId(id); irPara('os-detalhe'); }}
-        onNovaOSComData={(dataBR) => { setDataAgendadaOS(dataBR); irPara('os-form'); }}
       />
     );
   }
 
-  if (telaAtual === 'relatorios')   return <RelatoriosScreen onVoltar={() => irPara('home')} />;
-  if (telaAtual === 'assinaturas') {
-    return (
-      <AssinaturasScreen
-        onVoltar={() => irPara('home')}
-        onAbrirOS={(id) => { setOsSelecionadaId(id); irPara('os-detalhe'); }}
-      />
-    );
-  }
+  if (telaAtual === 'relatorios') return <RelatoriosScreen onVoltar={() => irPara('home')} />;
 
   if (telaAtual === 'tecnicos-lista') {
     return (
@@ -210,10 +201,12 @@ function AppInner() {
       />
     );
   }
+
   if (telaAtual === 'tema-app')       return <TemaAppScreen      onVoltar={() => irPara('configuracoes')} />;
   if (telaAtual === 'tema-pdf')       return <TemaPdfScreen      onVoltar={() => irPara('configuracoes')} />;
   if (telaAtual === 'edicao-empresa') return <EdicaoEmpresaScreen onVoltar={() => irPara('configuracoes')} />;
   if (telaAtual === 'alterar-senha')  return <AlterarSenhaScreen  onVoltar={() => irPara('configuracoes')} />;
+  if (telaAtual === 'licenca')        return <LicencaScreen       onVoltar={() => irPara('configuracoes')} />;
 
   return (
     <HomeScreen
