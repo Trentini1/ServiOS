@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useThema } from '../contexts/ThemeContext';
+import { AppTema } from '../utils/temas';
 
 type Usuario = { nome: string; email: string; senha: string };
 
@@ -39,10 +41,12 @@ async function salvarUsuarios(lista: Usuario[]) {
 }
 
 type Props = {
-  onLoginSuccess: (nome: string) => void;
+  onLoginSuccess: (usuario: Usuario) => void;
 };
 
 export default function LoginScreen({ onLoginSuccess }: Props) {
+  const tema = useThema();
+  const styles = useMemo(() => criarEstilos(tema), [tema]);
   const [modo, setModo] = useState<'login' | 'cadastro'>('login');
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
@@ -107,7 +111,7 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
     setCarregando(false);
     const usuario = lista.find((u) => u.email === email.trim().toLowerCase() && u.senha === senha);
     if (usuario) {
-      onLoginSuccess(usuario.nome);
+      onLoginSuccess(usuario);
     } else {
       Alert.alert('Erro', 'E-mail ou senha incorretos.');
     }
@@ -322,132 +326,47 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0b1220',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 28,
-  },
-  logoBadge: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: '#2563eb',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-    shadowColor: '#2563eb',
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
-  },
-  logo: {
-    fontSize: 30,
-    fontWeight: '700',
-    color: '#ffffff',
-    letterSpacing: 1,
-  },
-  tagline: {
-    fontSize: 13,
-    color: '#64748b',
-    marginTop: 4,
-  },
-  card: {
-    backgroundColor: '#111827',
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#1f2937',
-  },
-  toggleContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#0b1220',
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 22,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  toggleIndicator: {
-    position: 'absolute',
-    top: 4,
-    left: 4,
-    bottom: 4,
-    backgroundColor: '#2563eb',
-    borderRadius: 9,
-  },
-  toggleButton: {
-    flex: 1,
-    paddingVertical: 11,
-    alignItems: 'center',
-    zIndex: 1,
-  },
-  toggleText: {
-    color: '#64748b',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  toggleTextAtivo: {
-    color: '#ffffff',
-  },
-  inputGroup: {
-    marginBottom: 14,
-  },
-  label: {
-    color: '#94a3b8',
-    fontSize: 12,
-    marginBottom: 6,
-    fontWeight: '500',
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0b1220',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#1f2937',
-    paddingHorizontal: 14,
-  },
-  inputIcon: {
-    marginRight: 8,
-  },
-  input: {
-    flex: 1,
-    color: '#ffffff',
-    fontSize: 15,
-    paddingVertical: 13,
-  },
-  button: {
-    backgroundColor: '#2563eb',
-    borderRadius: 10,
-    paddingVertical: 15,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#2563eb',
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-  buttonText: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  hint: {
-    color: '#374151',
-    fontSize: 11,
-    textAlign: 'center',
-    marginTop: 14,
-  },
-});
+function criarEstilos(t: AppTema) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: t.fundo },
+    scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 24 },
+    header: { alignItems: 'center', marginBottom: 28 },
+    logoBadge: {
+      width: 56, height: 56, borderRadius: 16, backgroundColor: t.primario,
+      alignItems: 'center', justifyContent: 'center', marginBottom: 14,
+      shadowColor: t.primario, shadowOpacity: 0.4, shadowRadius: 12,
+      shadowOffset: { width: 0, height: 6 }, elevation: 6,
+    },
+    logo: { fontSize: 30, fontWeight: '700', color: t.texto, letterSpacing: 1 },
+    tagline: { fontSize: 13, color: t.textoMuted, marginTop: 4 },
+    card: { backgroundColor: t.card, borderRadius: 20, padding: 20, borderWidth: 1, borderColor: t.borda },
+    toggleContainer: {
+      flexDirection: 'row', backgroundColor: t.inputFundo,
+      borderRadius: 12, padding: 4, marginBottom: 22,
+      position: 'relative', overflow: 'hidden',
+    },
+    toggleIndicator: {
+      position: 'absolute', top: 4, left: 4, bottom: 4,
+      backgroundColor: t.primario, borderRadius: 9,
+    },
+    toggleButton: { flex: 1, paddingVertical: 11, alignItems: 'center', zIndex: 1 },
+    toggleText: { color: t.textoMuted, fontWeight: '600', fontSize: 14 },
+    toggleTextAtivo: { color: '#ffffff' },
+    inputGroup: { marginBottom: 14 },
+    label: { color: t.textoSec, fontSize: 12, marginBottom: 6, fontWeight: '500' },
+    inputWrapper: {
+      flexDirection: 'row', alignItems: 'center', backgroundColor: t.inputFundo,
+      borderRadius: 10, borderWidth: 1, borderColor: t.borda, paddingHorizontal: 14,
+    },
+    inputIcon: { marginRight: 8 },
+    input: { flex: 1, color: t.texto, fontSize: 15, paddingVertical: 13 },
+    button: {
+      backgroundColor: t.primario, borderRadius: 10, paddingVertical: 15,
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+      shadowColor: t.primario, shadowOpacity: 0.3, shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 }, elevation: 4,
+    },
+    buttonText: { color: '#ffffff', fontSize: 15, fontWeight: '600' },
+    hint: { color: t.borda, fontSize: 11, textAlign: 'center', marginTop: 14 },
+  });
+}

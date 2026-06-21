@@ -1,12 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  ScrollView,
-  Image,
+  View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { carregar, salvar } from '../utils/storage';
@@ -16,31 +10,26 @@ import FotosOS from '../components/FotosOS';
 import PeriodosExecucao from '../components/PeriodosExecucao';
 import PecasUtilizadas from '../components/PecasUtilizadas';
 import { gerarESalvarPdfOS } from '../utils/gerarPdfOS';
+import { useThema, usePdfTema } from '../contexts/ThemeContext';
+import { AppTema, PDF_TEMAS_PRESET } from '../utils/temas';
 
 type Empresa = {
-  nome: string;
-  cnpj: string;
-  telefone: string;
-  segmento: string;
-  cidade: string;
-  estado: string;
+  nome: string; cnpj?: string; telefone?: string; email?: string;
+  endereco?: string; cidade?: string; estado?: string; segmento?: string;
 };
 
-type Props = {
-  osId: string;
-  onVoltar: () => void;
-  onAlterado: () => void;
-};
+type Props = { osId: string; onVoltar: () => void; onAlterado: () => void };
 
 const STATUS_OPCOES: OrdemServico['status'][] = ['Aberta', 'Em Andamento', 'Concluída'];
-
 const CORES_STATUS: Record<string, string> = {
-  Aberta: '#d97706',
-  'Em Andamento': '#2563eb',
-  Concluída: '#16a34a',
+  Aberta: '#d97706', 'Em Andamento': '#2563eb', Concluída: '#16a34a',
 };
 
 export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
+  const tema = useThema();
+  const pdfTemaPadrao = usePdfTema();
+  const styles = useMemo(() => criarEstilos(tema), [tema]);
+
   const [ordem, setOrdem] = useState<OrdemServico | null>(null);
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [modalAssinatura, setModalAssinatura] = useState<'tecnico' | 'cliente' | null>(null);
@@ -48,8 +37,7 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
 
   const carregarOrdem = useCallback(async () => {
     const lista = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
-    const encontrada = lista.find((o) => o.id === osId) ?? null;
-    setOrdem(encontrada);
+    setOrdem(lista.find((o) => o.id === osId) ?? null);
   }, [osId]);
 
   useEffect(() => {
@@ -61,7 +49,10 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
     if (!ordem || !empresa) return;
     setGerandoPdf(true);
     try {
-      await gerarESalvarPdfOS(ordem, empresa);
+      const pdfTemaOS = ordem.temaPdfId
+        ? PDF_TEMAS_PRESET.find((t) => t.id === ordem.temaPdfId) ?? pdfTemaPadrao
+        : pdfTemaPadrao;
+      await gerarESalvarPdfOS(ordem, empresa, pdfTemaOS);
     } catch {
       Alert.alert('Erro', 'Não foi possível gerar o PDF.');
     } finally {
@@ -69,69 +60,26 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
     }
   }
 
-  async function alterarStatus(novoStatus: OrdemServico['status']) {
+  async function salvarCampo<K extends keyof OrdemServico>(campo: K, valor: OrdemServico[K]) {
     if (!ordem) return;
     const lista = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
-    const novaLista = lista.map((o) =>
-      o.id === ordem.id ? { ...o, status: novoStatus } : o
-    );
+    const novaLista = lista.map((o) => o.id === ordem.id ? { ...o, [campo]: valor } : o);
     await salvar('ordensServico', novaLista);
-    setOrdem({ ...ordem, status: novoStatus });
-    onAlterado();
-  }
-
-  async function salvarFotos(novasFotos: string[]) {
-    if (!ordem) return;
-    const lista = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
-    await salvar('ordensServico', lista.map((o) => o.id === ordem.id ? { ...o, fotos: novasFotos } : o));
-    setOrdem({ ...ordem, fotos: novasFotos });
-    onAlterado();
-  }
-
-  async function salvarDiasExecucao(dias: DiaExecucao[]) {
-    if (!ordem) return;
-    const lista = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
-    await salvar('ordensServico', lista.map((o) => o.id === ordem.id ? { ...o, diasExecucao: dias } : o));
-    setOrdem({ ...ordem, diasExecucao: dias });
-    onAlterado();
-  }
-
-  async function salvarPecas(pecas: PecaUtilizada[]) {
-    if (!ordem) return;
-    const lista = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
-    await salvar('ordensServico', lista.map((o) => o.id === ordem.id ? { ...o, pecas } : o));
-    setOrdem({ ...ordem, pecas });
-    onAlterado();
-  }
-
-  async function salvarAssinatura(tipo: 'tecnico' | 'cliente', base64: string) {
-    if (!ordem) return;
-    const lista = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
-    const campo = tipo === 'tecnico' ? 'assinaturaTecnico' : 'assinaturaCliente';
-    const novaLista = lista.map((o) =>
-      o.id === ordem.id ? { ...o, [campo]: base64 } : o
-    );
-    await salvar('ordensServico', novaLista);
-    setOrdem({ ...ordem, [campo]: base64 });
+    setOrdem((prev) => prev ? { ...prev, [campo]: valor } : prev);
     onAlterado();
   }
 
   function confirmarExclusao() {
-    Alert.alert(
-      'Excluir Ordem de Serviço',
-      'Essa ação não pode ser desfeita. Deseja continuar?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Excluir', style: 'destructive', onPress: excluirOrdem },
-      ]
-    );
+    Alert.alert('Excluir Ordem de Serviço', 'Essa ação não pode ser desfeita. Deseja continuar?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Excluir', style: 'destructive', onPress: excluirOrdem },
+    ]);
   }
 
   async function excluirOrdem() {
     if (!ordem) return;
     const lista = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
-    const novaLista = lista.filter((o) => o.id !== ordem.id);
-    await salvar('ordensServico', novaLista);
+    await salvar('ordensServico', lista.filter((o) => o.id !== ordem.id));
     onAlterado();
     onVoltar();
   }
@@ -146,10 +94,14 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
           <Text style={styles.titulo}>Ordem de Serviço</Text>
           <View style={{ width: 36 }} />
         </View>
-        <Text style={styles.naoEncontrado}>Ordem não encontrada.</Text>
+        <Text style={[styles.naoEncontrado, { color: tema.textoMuted }]}>Ordem não encontrada.</Text>
       </View>
     );
   }
+
+  const pdfTemaAtivo = ordem.temaPdfId
+    ? PDF_TEMAS_PRESET.find((t) => t.id === ordem.temaPdfId) ?? pdfTemaPadrao
+    : pdfTemaPadrao;
 
   return (
     <View style={styles.container}>
@@ -159,12 +111,10 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
         </TouchableOpacity>
         <Text style={styles.titulo}>Detalhes da OS</Text>
         <View style={styles.headerAcoes}>
-          <TouchableOpacity
-            onPress={exportarPdf}
-            style={[styles.pdfBotao, gerandoPdf && { opacity: 0.5 }]}
-            disabled={gerandoPdf}
-          >
-            <Ionicons name="share-outline" size={18} color="#2563eb" />
+          <TouchableOpacity onPress={exportarPdf}
+            style={[styles.pdfBotao, { backgroundColor: tema.primario + '22', borderColor: tema.primario + '55' }, gerandoPdf && { opacity: 0.5 }]}
+            disabled={gerandoPdf}>
+            <Ionicons name="share-outline" size={18} color={tema.primario} />
           </TouchableOpacity>
           <TouchableOpacity onPress={confirmarExclusao} style={styles.excluirBotao}>
             <Ionicons name="trash-outline" size={20} color="#f87171" />
@@ -172,21 +122,20 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
         </View>
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+
+        {/* Cliente */}
         <View style={styles.card}>
           <View style={styles.cardTopo}>
-            <View style={styles.iconeCliente}>
-              <Ionicons name="business" size={22} color="#2563eb" />
+            <View style={[styles.iconeCliente, { backgroundColor: tema.primario + '22' }]}>
+              <Ionicons name="business" size={22} color={tema.primario} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.cliente}>{ordem.cliente}</Text>
               <Text style={styles.data}>Criada em {ordem.dataCriacao}</Text>
               {!!ordem.clienteTelefone && (
                 <View style={styles.telefoneRow}>
-                  <Ionicons name="call-outline" size={13} color="#64748b" />
+                  <Ionicons name="call-outline" size={13} color={tema.textoMuted} />
                   <Text style={styles.telefone}>{ordem.clienteTelefone}</Text>
                 </View>
               )}
@@ -194,82 +143,42 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
           </View>
         </View>
 
+        {/* Informações técnicas */}
         <View style={styles.card}>
           <Text style={styles.secaoTitulo}>Informações técnicas</Text>
-
-          <View style={styles.infoLinha}>
-            <Ionicons name="cog-outline" size={16} color="#64748b" />
-            <Text style={styles.infoLabel}>Motor / Equipamento</Text>
-          </View>
-          <Text style={styles.infoValor}>{ordem.motor}</Text>
-
-          <View style={[styles.infoLinha, { marginTop: 14 }]}>
-            <Ionicons name="locate-outline" size={16} color="#64748b" />
-            <Text style={styles.infoLabel}>Posição</Text>
-          </View>
-          <Text style={styles.infoValor}>{ordem.posicao}</Text>
-
-          <View style={[styles.infoLinha, { marginTop: 14 }]}>
-            <Ionicons name="construct-outline" size={16} color="#64748b" />
-            <Text style={styles.infoLabel}>Tipo de manutenção</Text>
-          </View>
-          <Text style={styles.infoValor}>{ordem.tipoManutencao}</Text>
-
-          {!!ordem.descricao && (
-            <>
-              <View style={[styles.infoLinha, { marginTop: 14 }]}>
-                <Ionicons name="document-text-outline" size={16} color="#64748b" />
-                <Text style={styles.infoLabel}>Descrição</Text>
+          {[
+            { icone: 'cog-outline', label: 'Motor / Equipamento', valor: ordem.motor },
+            { icone: 'locate-outline', label: 'Posição', valor: ordem.posicao },
+            { icone: 'construct-outline', label: 'Tipo de manutenção', valor: ordem.tipoManutencao },
+            ordem.descricao ? { icone: 'document-text-outline', label: 'Descrição', valor: ordem.descricao } : null,
+            ordem.tecnicoResponsavel ? { icone: 'person-outline', label: 'Técnico responsável', valor: ordem.tecnicoResponsavel } : null,
+            ordem.dataAgendada ? { icone: 'calendar-outline', label: 'Data agendada', valor: ordem.dataAgendada.split('-').reverse().join('/') } : null,
+          ].filter(Boolean).map((item, idx) => (
+            <View key={idx} style={idx > 0 ? { marginTop: 14 } : {}}>
+              <View style={styles.infoLinha}>
+                <Ionicons name={(item as any).icone as any} size={16} color={tema.textoMuted} />
+                <Text style={styles.infoLabel}>{(item as any).label}</Text>
               </View>
-              <Text style={styles.infoValor}>{ordem.descricao}</Text>
-            </>
-          )}
-
-          {!!ordem.tecnicoResponsavel && (
-            <>
-              <View style={[styles.infoLinha, { marginTop: 14 }]}>
-                <Ionicons name="person-outline" size={16} color="#64748b" />
-                <Text style={styles.infoLabel}>Técnico responsável</Text>
-              </View>
-              <Text style={styles.infoValor}>{ordem.tecnicoResponsavel}</Text>
-            </>
-          )}
-
-          {!!ordem.dataAgendada && (
-            <>
-              <View style={[styles.infoLinha, { marginTop: 14 }]}>
-                <Ionicons name="calendar-outline" size={16} color="#64748b" />
-                <Text style={styles.infoLabel}>Data agendada</Text>
-              </View>
-              <Text style={styles.infoValor}>
-                {ordem.dataAgendada.split('-').reverse().join('/')}
-              </Text>
-            </>
-          )}
+              <Text style={styles.infoValor}>{(item as any).valor}</Text>
+            </View>
+          ))}
         </View>
 
+        {/* Status */}
         <View style={styles.card}>
           <Text style={styles.secaoTitulo}>Status</Text>
           <View style={styles.statusOpcoes}>
             {STATUS_OPCOES.map((opcao) => (
               <TouchableOpacity
                 key={opcao}
-                style={[
-                  styles.statusChip,
-                  ordem.status === opcao && {
-                    backgroundColor: CORES_STATUS[opcao],
-                    borderColor: CORES_STATUS[opcao],
-                  },
-                ]}
-                onPress={() => alterarStatus(opcao)}
+                style={[styles.statusChip,
+                  { borderColor: tema.borda },
+                  ordem.status === opcao && { backgroundColor: CORES_STATUS[opcao], borderColor: CORES_STATUS[opcao] }]}
+                onPress={() => salvarCampo('status', opcao)}
                 activeOpacity={0.8}
               >
-                <Text
-                  style={[
-                    styles.statusChipTexto,
-                    ordem.status === opcao && styles.statusChipTextoAtivo,
-                  ]}
-                >
+                <Text style={[styles.statusChipTexto,
+                  ordem.status === opcao && styles.statusChipTextoAtivo]}>
                   {opcao}
                 </Text>
               </TouchableOpacity>
@@ -277,77 +186,75 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
           </View>
         </View>
 
+        {/* Períodos */}
         <View style={styles.card}>
           <Text style={styles.secaoTitulo}>Períodos de execução</Text>
-          <PeriodosExecucao
-            dias={ordem.diasExecucao ?? []}
-            onChange={salvarDiasExecucao}
-          />
+          <PeriodosExecucao dias={ordem.diasExecucao ?? []} onChange={(dias) => salvarCampo('diasExecucao', dias)} />
         </View>
 
+        {/* Peças */}
         <View style={styles.card}>
           <Text style={styles.secaoTitulo}>Peças utilizadas</Text>
-          <PecasUtilizadas
-            pecas={ordem.pecas ?? []}
-            onChange={salvarPecas}
-          />
+          <PecasUtilizadas pecas={ordem.pecas ?? []} onChange={(p) => salvarCampo('pecas', p)} />
         </View>
 
+        {/* Tema do PDF desta OS */}
+        <View style={styles.card}>
+          <Text style={styles.secaoTitulo}>Tema do PDF desta OS</Text>
+          <View style={styles.pdfTemasRow}>
+            {PDF_TEMAS_PRESET.map((pdfT) => {
+              const ativo = pdfTemaAtivo.id === pdfT.id;
+              return (
+                <TouchableOpacity
+                  key={pdfT.id}
+                  style={[styles.pdfTemaChip,
+                    { borderColor: ativo ? pdfT.corHeader : tema.borda },
+                    ativo && { backgroundColor: pdfT.corHeader + '22' }]}
+                  onPress={() => salvarCampo('temaPdfId', pdfT.id)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.pdfTemaColor, { backgroundColor: pdfT.corHeader }]} />
+                  <Text style={[styles.pdfTemaTexto, ativo && { color: pdfT.corHeader }]}>
+                    {pdfT.nome.split(' ')[0]}
+                  </Text>
+                  {ativo && <Ionicons name="checkmark" size={10} color={pdfT.corHeader} />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Assinaturas */}
         <View style={styles.card}>
           <Text style={styles.secaoTitulo}>Assinaturas</Text>
-
-          <View style={styles.assinaturaLinha}>
-            <Text style={styles.assinaturaLabel}>Técnico</Text>
-            {ordem.assinaturaTecnico ? (
-              <TouchableOpacity onPress={() => setModalAssinatura('tecnico')}>
-                <Image
-                  source={{ uri: ordem.assinaturaTecnico }}
-                  style={styles.assinaturaImagem}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={styles.assinaturaBotao}
-                onPress={() => setModalAssinatura('tecnico')}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="create-outline" size={16} color="#2563eb" />
-                <Text style={styles.assinaturaBotaoTexto}>Assinar</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <View style={[styles.assinaturaLinha, { marginTop: 16 }]}>
-            <Text style={styles.assinaturaLabel}>Cliente</Text>
-            {ordem.assinaturaCliente ? (
-              <TouchableOpacity onPress={() => setModalAssinatura('cliente')}>
-                <Image
-                  source={{ uri: ordem.assinaturaCliente }}
-                  style={styles.assinaturaImagem}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={styles.assinaturaBotao}
-                onPress={() => setModalAssinatura('cliente')}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="create-outline" size={16} color="#2563eb" />
-                <Text style={styles.assinaturaBotaoTexto}>Assinar</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          {(['tecnico', 'cliente'] as const).map((tipo) => {
+            const campo = tipo === 'tecnico' ? 'assinaturaTecnico' : 'assinaturaCliente';
+            const assinatura = ordem[campo];
+            return (
+              <View key={tipo} style={[styles.assinaturaLinha, tipo === 'cliente' && { marginTop: 16 }]}>
+                <Text style={styles.assinaturaLabel}>{tipo === 'tecnico' ? 'Técnico' : 'Cliente'}</Text>
+                {assinatura ? (
+                  <TouchableOpacity onPress={() => setModalAssinatura(tipo)}>
+                    <Image source={{ uri: assinatura }} style={styles.assinaturaImagem} resizeMode="contain" />
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.assinaturaBotao, { backgroundColor: tema.primario + '22', borderColor: tema.primario + '55' }]}
+                    onPress={() => setModalAssinatura(tipo)} activeOpacity={0.8}
+                  >
+                    <Ionicons name="create-outline" size={16} color={tema.primario} />
+                    <Text style={[styles.assinaturaBotaoTexto, { color: tema.primario }]}>Assinar</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          })}
         </View>
 
+        {/* Fotos */}
         <View style={styles.card}>
           <Text style={styles.secaoTitulo}>Fotos</Text>
-          <FotosOS
-            fotos={ordem.fotos ?? []}
-            onChange={salvarFotos}
-            maxFotos={10}
-          />
+          <FotosOS fotos={ordem.fotos ?? []} onChange={(f) => salvarCampo('fotos', f)} maxFotos={10} />
         </View>
       </ScrollView>
 
@@ -355,191 +262,77 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
         visivel={modalAssinatura !== null}
         titulo={modalAssinatura === 'tecnico' ? 'Assinatura do Técnico' : 'Assinatura do Cliente'}
         onFechar={() => setModalAssinatura(null)}
-        onSalvar={(base64) => {
-          if (modalAssinatura) salvarAssinatura(modalAssinatura, base64);
-        }}
+        onSalvar={(b64) => { if (modalAssinatura) salvarCampo(modalAssinatura === 'tecnico' ? 'assinaturaTecnico' : 'assinaturaCliente', b64); }}
       />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0b1220',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
-  },
-  voltarBotao: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#111827',
-    borderWidth: 1,
-    borderColor: '#1f2937',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerAcoes: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  pdfBotao: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#2563eb22',
-    borderWidth: 1,
-    borderColor: '#2563eb55',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  excluirBotao: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#f8717122',
-    borderWidth: 1,
-    borderColor: '#f8717155',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  titulo: {
-    color: '#ffffff',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  naoEncontrado: {
-    color: '#64748b',
-    textAlign: 'center',
-    marginTop: 40,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingTop: 4,
-    paddingBottom: 40,
-  },
-  card: {
-    backgroundColor: '#111827',
-    borderRadius: 16,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#1f2937',
-    marginBottom: 14,
-  },
-  cardTopo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  iconeCliente: {
-    width: 46,
-    height: 46,
-    borderRadius: 12,
-    backgroundColor: '#2563eb22',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
-  cliente: {
-    color: '#ffffff',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  data: {
-    color: '#64748b',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  telefoneRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 4,
-  },
-  telefone: {
-    color: '#64748b',
-    fontSize: 12,
-  },
-  secaoTitulo: {
-    color: '#94a3b8',
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 14,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  infoLinha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  infoLabel: {
-    color: '#64748b',
-    fontSize: 12,
-  },
-  infoValor: {
-    color: '#ffffff',
-    fontSize: 15,
-    marginTop: 4,
-    marginLeft: 22,
-  },
-  statusOpcoes: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  statusChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: '#0b1220',
-    borderWidth: 1,
-    borderColor: '#1f2937',
-  },
-  statusChipTexto: {
-    color: '#64748b',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  statusChipTextoAtivo: {
-    color: '#ffffff',
-  },
-  assinaturaLinha: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  assinaturaLabel: {
-    color: '#94a3b8',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  assinaturaImagem: {
-    width: 140,
-    height: 60,
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-  },
-  assinaturaBotao: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#2563eb22',
-    borderWidth: 1,
-    borderColor: '#2563eb55',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  assinaturaBotaoTexto: {
-    color: '#2563eb',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-});
+function criarEstilos(t: AppTema) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: t.fundo },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16,
+    },
+    voltarBotao: {
+      width: 36, height: 36, borderRadius: 10, backgroundColor: t.card,
+      borderWidth: 1, borderColor: t.borda, alignItems: 'center', justifyContent: 'center',
+    },
+    headerAcoes: { flexDirection: 'row', gap: 8 },
+    pdfBotao: {
+      width: 36, height: 36, borderRadius: 10, borderWidth: 1,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    excluirBotao: {
+      width: 36, height: 36, borderRadius: 10,
+      backgroundColor: '#f8717122', borderWidth: 1, borderColor: '#f8717155',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    titulo: { color: t.texto, fontSize: 17, fontWeight: '700' },
+    naoEncontrado: { textAlign: 'center', marginTop: 40 },
+    scrollContent: { padding: 20, paddingTop: 4, paddingBottom: 40 },
+    card: {
+      backgroundColor: t.card, borderRadius: 16, padding: 18,
+      borderWidth: 1, borderColor: t.borda, marginBottom: 14,
+    },
+    cardTopo: { flexDirection: 'row', alignItems: 'center' },
+    iconeCliente: {
+      width: 46, height: 46, borderRadius: 12,
+      alignItems: 'center', justifyContent: 'center', marginRight: 14,
+    },
+    cliente: { color: t.texto, fontSize: 17, fontWeight: '700' },
+    data: { color: t.textoMuted, fontSize: 12, marginTop: 2 },
+    telefoneRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+    telefone: { color: t.textoMuted, fontSize: 12 },
+    secaoTitulo: {
+      color: t.textoSec, fontSize: 13, fontWeight: '600',
+      marginBottom: 14, textTransform: 'uppercase', letterSpacing: 0.5,
+    },
+    infoLinha: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    infoLabel: { color: t.textoMuted, fontSize: 12 },
+    infoValor: { color: t.texto, fontSize: 15, marginTop: 4, marginLeft: 22 },
+    statusOpcoes: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    statusChip: {
+      paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20,
+      backgroundColor: t.fundo, borderWidth: 1,
+    },
+    statusChipTexto: { color: t.textoMuted, fontSize: 13, fontWeight: '600' },
+    statusChipTextoAtivo: { color: '#ffffff' },
+    pdfTemasRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    pdfTemaChip: {
+      flexDirection: 'row', alignItems: 'center', gap: 5,
+      paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10, borderWidth: 1,
+    },
+    pdfTemaColor: { width: 10, height: 10, borderRadius: 5 },
+    pdfTemaTexto: { color: t.textoSec, fontSize: 11, fontWeight: '600' },
+    assinaturaLinha: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    assinaturaLabel: { color: t.textoSec, fontSize: 13, fontWeight: '500' },
+    assinaturaImagem: { width: 140, height: 60, backgroundColor: '#ffffff', borderRadius: 8 },
+    assinaturaBotao: {
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      borderWidth: 1, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8,
+    },
+    assinaturaBotaoTexto: { fontSize: 13, fontWeight: '600' },
+  });
+}

@@ -1,31 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  RefreshControl,
+  View, Text, StyleSheet, TouchableOpacity, FlatList, RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { carregar } from '../utils/storage';
+import { useThema } from '../contexts/ThemeContext';
+import { AppTema } from '../utils/temas';
 
-export type PeriodoTrabalho = {
-  entrada: string;
-  saida: string;
-};
-
-export type DiaExecucao = {
-  data: string;
-  periodos: PeriodoTrabalho[];
-};
-
+export type PeriodoTrabalho = { entrada: string; saida: string };
+export type DiaExecucao = { data: string; periodos: PeriodoTrabalho[] };
 export type PecaUtilizada = {
-  id: string;
-  descricao: string;
-  quantidade: string;
-  unidade: string;
-  fornecedor: string;
+  id: string; descricao: string; quantidade: string; unidade: string; fornecedor: string;
 };
 
 export type OrdemServico = {
@@ -45,6 +30,7 @@ export type OrdemServico = {
   fotos?: string[];
   assinaturaTecnico?: string;
   assinaturaCliente?: string;
+  temaPdfId?: string;
 };
 
 type Props = {
@@ -60,6 +46,8 @@ const CORES_STATUS: Record<string, string> = {
 };
 
 export default function OSListScreen({ onVoltar, onNovaOS, onAbrirOS }: Props) {
+  const tema = useThema();
+  const styles = useMemo(() => criarEstilos(tema), [tema]);
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
   const [recarregando, setRecarregando] = useState(false);
 
@@ -88,11 +76,9 @@ export default function OSListScreen({ onVoltar, onNovaOS, onAbrirOS }: Props) {
 
       {ordens.length === 0 ? (
         <View style={styles.vazio}>
-          <Ionicons name="document-text-outline" size={48} color="#334155" />
+          <Ionicons name="document-text-outline" size={48} color={tema.borda} />
           <Text style={styles.vazioTitulo}>Nenhuma OS ainda</Text>
-          <Text style={styles.vazioTexto}>
-            Toque no botão abaixo para criar a primeira ordem de serviço.
-          </Text>
+          <Text style={styles.vazioTexto}>Toque no botão abaixo para criar a primeira ordem de serviço.</Text>
         </View>
       ) : (
         <FlatList
@@ -100,40 +86,18 @@ export default function OSListScreen({ onVoltar, onNovaOS, onAbrirOS }: Props) {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.lista}
           refreshControl={
-            <RefreshControl
-              refreshing={recarregando}
-              onRefresh={recarregar}
-              tintColor="#2563eb"
-              colors={['#2563eb']}
-            />
+            <RefreshControl refreshing={recarregando} onRefresh={recarregar}
+              tintColor={tema.primario} colors={[tema.primario]} />
           }
           renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.card}
-              onPress={() => onAbrirOS(item.id)}
-              activeOpacity={0.8}
-            >
+            <TouchableOpacity style={styles.card} onPress={() => onAbrirOS(item.id)} activeOpacity={0.8}>
               <View style={styles.cardTopo}>
                 <Text style={styles.cardCliente}>{item.cliente}</Text>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: CORES_STATUS[item.status] + '22' },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.statusTexto,
-                      { color: CORES_STATUS[item.status] },
-                    ]}
-                  >
-                    {item.status}
-                  </Text>
+                <View style={[styles.statusBadge, { backgroundColor: CORES_STATUS[item.status] + '22' }]}>
+                  <Text style={[styles.statusTexto, { color: CORES_STATUS[item.status] }]}>{item.status}</Text>
                 </View>
               </View>
-              <Text style={styles.cardDetalhe}>
-                {item.motor} • Posição {item.posicao}
-              </Text>
+              <Text style={styles.cardDetalhe}>{item.motor} • Posição {item.posicao}</Text>
               <Text style={styles.cardTipo}>{item.tipoManutencao}</Text>
               <Text style={styles.cardData}>{item.dataCriacao}</Text>
             </TouchableOpacity>
@@ -141,120 +105,46 @@ export default function OSListScreen({ onVoltar, onNovaOS, onAbrirOS }: Props) {
         />
       )}
 
-      <TouchableOpacity style={styles.fab} onPress={onNovaOS} activeOpacity={0.9}>
+      <TouchableOpacity style={[styles.fab, { backgroundColor: tema.primario, shadowColor: tema.primario }]}
+        onPress={onNovaOS} activeOpacity={0.9}>
         <Ionicons name="add" size={28} color="#ffffff" />
       </TouchableOpacity>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0b1220',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
-  },
-  voltarBotao: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#111827',
-    borderWidth: 1,
-    borderColor: '#1f2937',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  titulo: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  vazio: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 40,
-  },
-  vazioTitulo: {
-    color: '#94a3b8',
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: 14,
-  },
-  vazioTexto: {
-    color: '#475569',
-    fontSize: 13,
-    textAlign: 'center',
-    marginTop: 6,
-  },
-  lista: {
-    paddingHorizontal: 20,
-    paddingBottom: 100,
-  },
-  card: {
-    backgroundColor: '#111827',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#1f2937',
-    marginBottom: 12,
-  },
-  cardTopo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  cardCliente: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '600',
-    flex: 1,
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  statusTexto: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  cardDetalhe: {
-    color: '#94a3b8',
-    fontSize: 13,
-    marginBottom: 2,
-  },
-  cardTipo: {
-    color: '#64748b',
-    fontSize: 12,
-  },
-  cardData: {
-    color: '#374151',
-    fontSize: 11,
-    marginTop: 8,
-  },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 30,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#2563eb',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#2563eb',
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
-  },
-});
+function criarEstilos(t: AppTema) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: t.fundo },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16,
+    },
+    voltarBotao: {
+      width: 36, height: 36, borderRadius: 10, backgroundColor: t.card,
+      borderWidth: 1, borderColor: t.borda, alignItems: 'center', justifyContent: 'center',
+    },
+    titulo: { color: t.texto, fontSize: 18, fontWeight: '700' },
+    vazio: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
+    vazioTitulo: { color: t.textoSec, fontSize: 16, fontWeight: '600', marginTop: 14 },
+    vazioTexto: { color: t.textoFraco, fontSize: 13, textAlign: 'center', marginTop: 6 },
+    lista: { paddingHorizontal: 20, paddingBottom: 100 },
+    card: {
+      backgroundColor: t.card, borderRadius: 16, padding: 16,
+      borderWidth: 1, borderColor: t.borda, marginBottom: 12,
+    },
+    cardTopo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+    cardCliente: { color: t.texto, fontSize: 15, fontWeight: '600', flex: 1 },
+    statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+    statusTexto: { fontSize: 11, fontWeight: '700' },
+    cardDetalhe: { color: t.textoSec, fontSize: 13, marginBottom: 2 },
+    cardTipo: { color: t.textoMuted, fontSize: 12 },
+    cardData: { color: t.textoFraco, fontSize: 11, marginTop: 8 },
+    fab: {
+      position: 'absolute', right: 20, bottom: 30,
+      width: 56, height: 56, borderRadius: 28,
+      alignItems: 'center', justifyContent: 'center',
+      shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 6,
+    },
+  });
+}

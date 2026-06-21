@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useThema } from '../contexts/ThemeContext';
+import { AppTema } from '../utils/temas';
 
 const SEGMENTOS = [
   'Manutenção Naval',
@@ -54,6 +56,8 @@ function formatarTelefone(valor: string) {
 }
 
 export default function CompanyRegisterScreen({ onConcluir }: Props) {
+  const tema = useThema();
+  const styles = useMemo(() => criarEstilos(tema), [tema]);
   const [nome, setNome] = useState('');
   const [cnpj, setCnpj] = useState('');
   const [telefone, setTelefone] = useState('');
@@ -269,125 +273,43 @@ export default function CompanyRegisterScreen({ onConcluir }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0b1220',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  logoBadge: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: '#2563eb',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-    shadowColor: '#2563eb',
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
-  },
-  titulo: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#ffffff',
-    textAlign: 'center',
-  },
-  tagline: {
-    fontSize: 13,
-    color: '#64748b',
-    marginTop: 6,
-    textAlign: 'center',
-    paddingHorizontal: 16,
-  },
-  card: {
-    backgroundColor: '#111827',
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#1f2937',
-  },
-  inputGroup: {
-    marginBottom: 14,
-  },
-  label: {
-    color: '#94a3b8',
-    fontSize: 12,
-    marginBottom: 6,
-    fontWeight: '500',
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0b1220',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#1f2937',
-    paddingHorizontal: 14,
-  },
-  inputIcon: {
-    marginRight: 8,
-  },
-  input: {
-    flex: 1,
-    color: '#ffffff',
-    fontSize: 15,
-    paddingVertical: 13,
-  },
-  linha: {
-    flexDirection: 'row',
-  },
-  chipsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 20,
-    backgroundColor: '#0b1220',
-    borderWidth: 1,
-    borderColor: '#1f2937',
-  },
-  chipAtivo: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
-  },
-  chipText: {
-    color: '#64748b',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  chipTextAtivo: {
-    color: '#ffffff',
-  },
-  button: {
-    backgroundColor: '#2563eb',
-    borderRadius: 10,
-    paddingVertical: 15,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#2563eb',
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-  buttonText: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-});
+function criarEstilos(t: AppTema) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: t.fundo },
+    scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 24 },
+    header: { alignItems: 'center', marginBottom: 24 },
+    logoBadge: {
+      width: 56, height: 56, borderRadius: 16, backgroundColor: t.primario,
+      alignItems: 'center', justifyContent: 'center', marginBottom: 14,
+      shadowColor: t.primario, shadowOpacity: 0.4, shadowRadius: 12,
+      shadowOffset: { width: 0, height: 6 }, elevation: 6,
+    },
+    titulo: { fontSize: 24, fontWeight: '700', color: t.texto, textAlign: 'center' },
+    tagline: { fontSize: 13, color: t.textoMuted, marginTop: 6, textAlign: 'center', paddingHorizontal: 16 },
+    card: { backgroundColor: t.card, borderRadius: 20, padding: 20, borderWidth: 1, borderColor: t.borda },
+    inputGroup: { marginBottom: 14 },
+    label: { color: t.textoSec, fontSize: 12, marginBottom: 6, fontWeight: '500' },
+    inputWrapper: {
+      flexDirection: 'row', alignItems: 'center', backgroundColor: t.inputFundo,
+      borderRadius: 10, borderWidth: 1, borderColor: t.borda, paddingHorizontal: 14,
+    },
+    inputIcon: { marginRight: 8 },
+    input: { flex: 1, color: t.texto, fontSize: 15, paddingVertical: 13 },
+    linha: { flexDirection: 'row' },
+    chipsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    chip: {
+      paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20,
+      backgroundColor: t.fundo, borderWidth: 1, borderColor: t.borda,
+    },
+    chipAtivo: { backgroundColor: t.primario, borderColor: t.primario },
+    chipText: { color: t.textoMuted, fontSize: 13, fontWeight: '500' },
+    chipTextAtivo: { color: '#ffffff' },
+    button: {
+      backgroundColor: t.primario, borderRadius: 10, paddingVertical: 15,
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+      shadowColor: t.primario, shadowOpacity: 0.3, shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 }, elevation: 4,
+    },
+    buttonText: { color: '#ffffff', fontSize: 15, fontWeight: '600' },
+  });
+}

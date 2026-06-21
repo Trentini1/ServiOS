@@ -1,14 +1,18 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import type { OrdemServico, DiaExecucao, PecaUtilizada } from '../screens/OSListScreen';
+import type { PdfTema } from './temas';
+import { PDF_TEMA_PADRAO } from './temas';
 
 type Empresa = {
   nome: string;
-  cnpj: string;
-  telefone: string;
-  segmento: string;
-  cidade: string;
-  estado: string;
+  cnpj?: string;
+  telefone?: string;
+  email?: string;
+  endereco?: string;
+  cidade?: string;
+  estado?: string;
+  segmento?: string;
 };
 
 function isoParaBR(iso: string) {
@@ -66,7 +70,7 @@ function blocoAssinatura(titulo: string, imagemBase64?: string) {
     </div>`;
 }
 
-function secaoPeriodos(dias: DiaExecucao[]): string {
+function secaoPeriodos(dias: DiaExecucao[], cor: string): string {
   if (!dias || dias.length === 0) return '';
   const totalGeral = calcularTotalGeral(dias);
   const diasOrdenados = [...dias].sort((a, b) => a.data.localeCompare(b.data));
@@ -80,7 +84,7 @@ function secaoPeriodos(dias: DiaExecucao[]): string {
       <tr>
         <td>${isoParaBR(dia.data)}</td>
         <td>${periodosTexto || '—'}</td>
-        <td style="text-align:center; font-weight:700; color:#d97706;">${total}</td>
+        <td style="text-align:center; font-weight:700; color:${cor};">${total}</td>
       </tr>`;
   }).join('');
 
@@ -88,19 +92,17 @@ function secaoPeriodos(dias: DiaExecucao[]): string {
     <div class="secao">
       <div class="secao-titulo">Períodos de Execução</div>
       <table class="tabela">
-        <thead>
-          <tr><th>Data</th><th>Períodos</th><th>Total</th></tr>
-        </thead>
+        <thead><tr><th>Data</th><th>Períodos</th><th>Total</th></tr></thead>
         <tbody>${linhas}</tbody>
       </table>
-      ${totalGeral ? `<div class="total-geral">Total geral: <strong>${totalGeral}</strong></div>` : ''}
+      ${totalGeral ? `<div class="total-geral" style="color:${cor};">Total geral: <strong>${totalGeral}</strong></div>` : ''}
     </div>`;
 }
 
-function secaoPecas(pecas: PecaUtilizada[]): string {
+function secaoPecas(pecas: PecaUtilizada[], estilo: PdfTema['estiloTabela']): string {
   if (!pecas || pecas.length === 0) return '';
-  const linhas = pecas.map((p) => `
-    <tr>
+  const linhas = pecas.map((p, i) => `
+    <tr${estilo === 'listrado' && i % 2 === 0 ? ' class="listrado"' : ''}>
       <td>${p.descricao}</td>
       <td style="text-align:center;">${p.quantidade} ${p.unidade}</td>
       <td>${p.fornecedor || '—'}</td>
@@ -110,9 +112,7 @@ function secaoPecas(pecas: PecaUtilizada[]): string {
     <div class="secao">
       <div class="secao-titulo">Peças Utilizadas</div>
       <table class="tabela">
-        <thead>
-          <tr><th>Descrição</th><th>Quantidade</th><th>Fornecedor</th></tr>
-        </thead>
+        <thead><tr><th>Descrição</th><th>Quantidade</th><th>Fornecedor</th></tr></thead>
         <tbody>${linhas}</tbody>
       </table>
     </div>`;
@@ -120,10 +120,7 @@ function secaoPecas(pecas: PecaUtilizada[]): string {
 
 function secaoFotos(fotos: string[]): string {
   if (!fotos || fotos.length === 0) return '';
-  // Para PDF: usa as imagens já em base64, limitadas a 3 por linha e tamanho controlado por CSS
-  const imgs = fotos.map((f) =>
-    `<img src="${f}" class="foto-thumb" />`
-  ).join('');
+  const imgs = fotos.map((f) => `<img src="${f}" class="foto-thumb" />`).join('');
   return `
     <div class="secao">
       <div class="secao-titulo">Registro Fotográfico (${fotos.length} foto${fotos.length > 1 ? 's' : ''})</div>
@@ -131,7 +128,52 @@ function secaoFotos(fotos: string[]): string {
     </div>`;
 }
 
-function montarHTML(ordem: OrdemServico, empresa: Empresa) {
+function cssParaTema(pdfTema: PdfTema): string {
+  const { corHeader, corAcento, corTextoHeader, corSecao, estiloTabela } = pdfTema;
+  const thBase: Record<PdfTema['estiloTabela'], string> = {
+    moderno: `background:${corAcento}22; color:${corAcento};`,
+    listrado: 'background:#f8fafc; color:#475569;',
+    minimal: 'background:transparent; color:#374151; border-bottom:2px solid #e2e8f0;',
+    elegante: `background:#0f172a; color:${corAcento};`,
+    industrial: `background:${corAcento}33; color:${corAcento}; font-family: 'Courier New', monospace;`,
+  };
+  const thStyle = thBase[estiloTabela] ?? thBase.moderno;
+
+  const tabelaExtra: Record<PdfTema['estiloTabela'], string> = {
+    moderno: `.tabela td { padding: 7px 8px; border-bottom: 1px solid ${corAcento}22; }`,
+    listrado: `.listrado { background: ${corAcento}11; }
+               .tabela td { padding: 6px 8px; border-bottom: 1px solid #f1f5f9; }`,
+    minimal: `.tabela td { padding: 8px 4px; border-bottom: 1px solid #f1f5f9; border-left: none; border-right: none; }
+              .tabela { border: none; }`,
+    elegante: `.tabela td { padding: 7px 10px; border-bottom: 1px solid ${corAcento}33; }
+               .tabela tr:last-child td { border-bottom: 2px solid ${corAcento}; }`,
+    industrial: `.tabela td { padding: 6px 8px; border: 1px solid ${corAcento}44; font-family: 'Courier New', monospace; }
+                 .tabela { border: 2px solid ${corAcento}; }`,
+  };
+  const tdExtra = tabelaExtra[estiloTabela] ?? tabelaExtra.moderno;
+
+  return `
+    .cabecalho { background: ${corHeader}; padding: 20px; margin: -28px -28px 20px; }
+    .empresa-nome { color: ${corTextoHeader}; font-size: 18px; font-weight: 700; }
+    .empresa-info { color: ${corTextoHeader}88; font-size: 11px; margin-top: 3px; }
+    .doc-titulo { color: ${corTextoHeader}; font-size: 14px; font-weight: 700; text-align: right; }
+    .doc-data { color: ${corTextoHeader}88; font-size: 11px; text-align: right; margin-top: 3px; }
+    .secao-titulo {
+      font-size: 10px; font-weight: 700; color: ${corSecao};
+      text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 2px solid ${corSecao}44; padding-bottom: 5px; margin-bottom: 10px;
+    }
+    .status-badge { background: ${corAcento}22; color: ${corAcento}; }
+    .tabela th { ${thStyle} padding: 6px 8px; font-size: 10px; text-transform: uppercase; }
+    ${tdExtra}
+    .rodape { color: ${corAcento}66; }
+  `;
+}
+
+function montarHTML(ordem: OrdemServico, empresa: Empresa, pdfTema: PdfTema) {
+  const css = cssParaTema(pdfTema);
+  const enderecoEmpresa = [empresa.endereco, empresa.cidade, empresa.estado].filter(Boolean).join(' · ');
+
   return `
     <html>
       <head>
@@ -141,42 +183,24 @@ function montarHTML(ordem: OrdemServico, empresa: Empresa) {
           body { padding: 28px; color: #1e293b; font-size: 13px; }
           .cabecalho {
             display: flex; justify-content: space-between; align-items: flex-start;
-            border-bottom: 3px solid #2563eb; padding-bottom: 14px; margin-bottom: 20px;
+            margin-bottom: 20px;
           }
-          .empresa-nome { font-size: 18px; font-weight: 700; color: #0b1220; }
-          .empresa-info { font-size: 11px; color: #64748b; margin-top: 3px; }
-          .doc-titulo { font-size: 14px; font-weight: 700; color: #2563eb; text-align: right; }
-          .doc-data { font-size: 11px; color: #64748b; text-align: right; margin-top: 3px; }
           .secao { margin-bottom: 18px; }
-          .secao-titulo {
-            font-size: 10px; font-weight: 700; color: #2563eb;
-            text-transform: uppercase; letter-spacing: 0.5px;
-            border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 10px;
-          }
           .grid { display: flex; flex-wrap: wrap; gap: 14px; }
           .campo { min-width: 140px; }
           .campo-label { font-size: 9px; color: #94a3b8; text-transform: uppercase; }
           .campo-valor { font-size: 12px; color: #1e293b; font-weight: 600; margin-top: 2px; }
-          .descricao-texto { font-size: 12px; color: #334155; line-height: 1.5; }
+          .descricao-texto { font-size: 12px; color: #334155; line-height: 1.6; }
           .status-badge {
             display: inline-block; padding: 3px 10px; border-radius: 5px;
-            font-size: 10px; font-weight: 700; background: #2563eb22; color: #2563eb;
+            font-size: 10px; font-weight: 700;
           }
           .tabela { width: 100%; border-collapse: collapse; font-size: 12px; }
-          .tabela th {
-            background: #f1f5f9; text-align: left; padding: 6px 8px;
-            font-size: 10px; color: #64748b; text-transform: uppercase;
-          }
-          .tabela td { padding: 6px 8px; border-bottom: 1px solid #f1f5f9; }
-          .tabela tr:last-child td { border-bottom: none; }
-          .total-geral { text-align: right; font-size: 12px; color: #d97706; margin-top: 6px; }
-          .fotos-grid {
-            display: flex; flex-wrap: wrap; gap: 8px;
-          }
+          .total-geral { text-align: right; font-size: 12px; margin-top: 6px; }
+          .fotos-grid { display: flex; flex-wrap: wrap; gap: 8px; }
           .foto-thumb {
             width: 160px; height: 120px;
-            object-fit: cover; border-radius: 6px;
-            border: 1px solid #e2e8f0;
+            object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0;
           }
           .assinaturas { display: flex; gap: 24px; margin-top: 36px; }
           .assinatura-box { flex: 1; text-align: center; }
@@ -184,15 +208,17 @@ function montarHTML(ordem: OrdemServico, empresa: Empresa) {
           .assinatura-vazia { height: 65px; }
           .assinatura-linha { border-top: 1px solid #94a3b8; margin-top: 6px; }
           .assinatura-titulo { font-size: 10px; color: #64748b; margin-top: 5px; }
-          .rodape { margin-top: 36px; font-size: 9px; color: #cbd5e1; text-align: center; }
+          .rodape { margin-top: 36px; font-size: 9px; text-align: center; }
+          ${css}
         </style>
       </head>
       <body>
         <div class="cabecalho">
           <div>
             <div class="empresa-nome">${empresa.nome}</div>
-            <div class="empresa-info">CNPJ: ${empresa.cnpj}</div>
-            <div class="empresa-info">${empresa.cidade}/${empresa.estado} · ${empresa.telefone}</div>
+            ${empresa.cnpj ? `<div class="empresa-info">CNPJ: ${empresa.cnpj}</div>` : ''}
+            ${enderecoEmpresa ? `<div class="empresa-info">${enderecoEmpresa}</div>` : ''}
+            ${empresa.telefone ? `<div class="empresa-info">${empresa.telefone}</div>` : ''}
           </div>
           <div>
             <div class="doc-titulo">ORDEM DE SERVIÇO</div>
@@ -240,7 +266,7 @@ function montarHTML(ordem: OrdemServico, empresa: Empresa) {
             </div>
             ${ordem.tecnicoResponsavel ? `
             <div class="campo">
-              <div class="campo-label">Técnico responsável</div>
+              <div class="campo-label">Técnico</div>
               <div class="campo-valor">${ordem.tecnicoResponsavel}</div>
             </div>` : ''}
           </div>
@@ -252,8 +278,8 @@ function montarHTML(ordem: OrdemServico, empresa: Empresa) {
           <div class="descricao-texto">${ordem.descricao}</div>
         </div>` : ''}
 
-        ${secaoPeriodos(ordem.diasExecucao ?? [])}
-        ${secaoPecas(ordem.pecas ?? [])}
+        ${secaoPeriodos(ordem.diasExecucao ?? [], pdfTema.corAcento)}
+        ${secaoPecas(ordem.pecas ?? [], pdfTema.estiloTabela)}
         ${secaoFotos(ordem.fotos ?? [])}
 
         <div class="assinaturas">
@@ -266,8 +292,12 @@ function montarHTML(ordem: OrdemServico, empresa: Empresa) {
     </html>`;
 }
 
-export async function gerarESalvarPdfOS(ordem: OrdemServico, empresa: Empresa) {
-  const html = montarHTML(ordem, empresa);
+export async function gerarESalvarPdfOS(
+  ordem: OrdemServico,
+  empresa: Empresa,
+  pdfTema: PdfTema = PDF_TEMA_PADRAO
+) {
+  const html = montarHTML(ordem, empresa, pdfTema);
   const { uri } = await Print.printToFileAsync({ html });
   const disponivel = await Sharing.isAvailableAsync();
   if (disponivel) {

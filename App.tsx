@@ -12,6 +12,12 @@ import AgendaScreen from './screens/AgendaScreen';
 import RelatoriosScreen from './screens/RelatoriosScreen';
 import TecnicosListScreen from './screens/TecnicosListScreen';
 import TecnicoFormScreen from './screens/TecnicoFormScreen';
+import ConfiguracoesScreen from './screens/ConfiguracoesScreen';
+import TemaAppScreen from './screens/TemaAppScreen';
+import TemaPdfScreen from './screens/TemaPdfScreen';
+import EdicaoEmpresaScreen from './screens/EdicaoEmpresaScreen';
+import AlterarSenhaScreen from './screens/AlterarSenhaScreen';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { salvar, carregar, remover } from './utils/storage';
 
 type Empresa = {
@@ -21,7 +27,11 @@ type Empresa = {
   segmento: string;
   cidade: string;
   estado: string;
+  email?: string;
+  endereco?: string;
 };
+
+type Usuario = { nome: string; email: string; senha: string };
 
 type Tela =
   | 'home'
@@ -33,11 +43,16 @@ type Tela =
   | 'agenda'
   | 'relatorios'
   | 'tecnicos-lista'
-  | 'tecnicos-form';
+  | 'tecnicos-form'
+  | 'configuracoes'
+  | 'tema-app'
+  | 'tema-pdf'
+  | 'edicao-empresa'
+  | 'alterar-senha';
 
-export default function App() {
+function AppInner() {
   const [carregandoApp, setCarregandoApp] = useState(true);
-  const [usuarioLogado, setUsuarioLogado] = useState<string | null>(null);
+  const [usuarioLogado, setUsuarioLogado] = useState<Usuario | null>(null);
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [telaAtual, setTelaAtual] = useState<Tela>('home');
   const [osSelecionadaId, setOsSelecionadaId] = useState<string | null>(null);
@@ -45,7 +60,7 @@ export default function App() {
 
   useEffect(() => {
     async function carregarDadosSalvos() {
-      const usuarioSalvo = await carregar<string>('usuarioLogado');
+      const usuarioSalvo = await carregar<Usuario>('usuarioLogado');
       const empresaSalva = await carregar<Empresa>('empresa');
       if (usuarioSalvo) setUsuarioLogado(usuarioSalvo);
       if (empresaSalva) setEmpresa(empresaSalva);
@@ -59,9 +74,9 @@ export default function App() {
     setTelaAtual(tela);
   }
 
-  async function handleLoginSuccess(nome: string) {
-    setUsuarioLogado(nome);
-    await salvar('usuarioLogado', nome);
+  async function handleLoginSuccess(usuario: Usuario) {
+    setUsuarioLogado(usuario);
+    await salvar('usuarioLogado', usuario);
   }
 
   async function handleEmpresaConcluida(dados: Empresa) {
@@ -74,7 +89,6 @@ export default function App() {
     setEmpresa(null);
     setTelaAtual('home');
     await remover('usuarioLogado');
-    await remover('empresa');
   }
 
   function handleAbrirMenu(id: string) {
@@ -96,27 +110,18 @@ export default function App() {
     );
   }
 
-  if (!usuarioLogado) {
-    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
-  }
-
-  if (!empresa) {
-    return <CompanyRegisterScreen onConcluir={handleEmpresaConcluida} />;
-  }
+  if (!usuarioLogado) return <LoginScreen onLoginSuccess={(u) => handleLoginSuccess(u)} />;
+  if (!empresa) return <CompanyRegisterScreen onConcluir={handleEmpresaConcluida} />;
 
   if (telaAtual === 'os-lista') {
     return (
       <OSListScreen
         onVoltar={() => irPara('home')}
         onNovaOS={() => irPara('os-form')}
-        onAbrirOS={(id) => {
-          setOsSelecionadaId(id);
-          irPara('os-detalhe');
-        }}
+        onAbrirOS={(id) => { setOsSelecionadaId(id); irPara('os-detalhe'); }}
       />
     );
   }
-
   if (telaAtual === 'os-form') {
     return (
       <OSFormScreen
@@ -126,7 +131,6 @@ export default function App() {
       />
     );
   }
-
   if (telaAtual === 'os-detalhe' && osSelecionadaId) {
     return (
       <OSDetailScreen
@@ -136,7 +140,6 @@ export default function App() {
       />
     );
   }
-
   if (telaAtual === 'clientes-lista') {
     return (
       <ClientListScreen
@@ -145,7 +148,6 @@ export default function App() {
       />
     );
   }
-
   if (telaAtual === 'clientes-form') {
     return (
       <ClientFormScreen
@@ -154,23 +156,15 @@ export default function App() {
       />
     );
   }
-
   if (telaAtual === 'agenda') {
     return (
       <AgendaScreen
         onVoltar={() => irPara('home')}
-        onAbrirOS={(id) => {
-          setOsSelecionadaId(id);
-          irPara('os-detalhe');
-        }}
+        onAbrirOS={(id) => { setOsSelecionadaId(id); irPara('os-detalhe'); }}
       />
     );
   }
-
-  if (telaAtual === 'relatorios') {
-    return <RelatoriosScreen onVoltar={() => irPara('home')} />;
-  }
-
+  if (telaAtual === 'relatorios') return <RelatoriosScreen onVoltar={() => irPara('home')} />;
   if (telaAtual === 'tecnicos-lista') {
     return (
       <TecnicosListScreen
@@ -179,7 +173,6 @@ export default function App() {
       />
     );
   }
-
   if (telaAtual === 'tecnicos-form') {
     return (
       <TecnicoFormScreen
@@ -188,22 +181,38 @@ export default function App() {
       />
     );
   }
+  if (telaAtual === 'configuracoes') {
+    return (
+      <ConfiguracoesScreen
+        onVoltar={() => irPara('home')}
+        onNavegar={(sub) => irPara(sub)}
+      />
+    );
+  }
+  if (telaAtual === 'tema-app') return <TemaAppScreen onVoltar={() => irPara('configuracoes')} />;
+  if (telaAtual === 'tema-pdf') return <TemaPdfScreen onVoltar={() => irPara('configuracoes')} />;
+  if (telaAtual === 'edicao-empresa') return <EdicaoEmpresaScreen onVoltar={() => irPara('configuracoes')} />;
+  if (telaAtual === 'alterar-senha') return <AlterarSenhaScreen onVoltar={() => irPara('configuracoes')} />;
 
   return (
     <HomeScreen
-      usuario={usuarioLogado}
+      usuario={usuarioLogado.nome}
       empresa={empresa}
       onSair={handleSair}
       onAbrirMenu={handleAbrirMenu}
+      onAbrirConfiguracoes={() => irPara('configuracoes')}
     />
   );
 }
 
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppInner />
+    </ThemeProvider>
+  );
+}
+
 const styles = StyleSheet.create({
-  loading: {
-    flex: 1,
-    backgroundColor: '#0b1220',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  loading: { flex: 1, backgroundColor: '#0b1220', alignItems: 'center', justifyContent: 'center' },
 });
