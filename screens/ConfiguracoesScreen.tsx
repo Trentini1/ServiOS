@@ -9,12 +9,16 @@ const VERSAO  = '1.0.0';
 const ANO     = '2025';
 const CRIADOR = 'Erick Trentini';
 
-type SubTela = 'tema-app' | 'tema-pdf' | 'edicao-empresa' | 'alterar-senha' | 'licenca';
+type SubTela = 'tema-app' | 'tema-pdf' | 'edicao-empresa' | 'alterar-senha' | 'licenca' | 'campos-os';
 type Props = { onVoltar: () => void; onNavegar: (tela: SubTela) => void };
 
 const MENU_APARENCIA = [
   { id: 'tema-app'  as SubTela, icone: 'color-palette-outline', cor: '#6366f1', titulo: 'Tema do App',  descricao: '5 temas • cores personalizadas' },
   { id: 'tema-pdf'  as SubTela, icone: 'document-text-outline',  cor: '#0891b2', titulo: 'Tema do PDF',  descricao: '5 modelos • cores customizáveis'  },
+];
+
+const MENU_OS = [
+  { id: 'campos-os' as SubTela, icone: 'list-outline', cor: '#2563eb', titulo: 'Campos da OS', descricao: 'Escolha quais campos aparecem na criação de OS' },
 ];
 
 const MENU_CONTA = [
@@ -123,6 +127,7 @@ export default function ConfiguracoesScreen({ onVoltar, onNavegar }: Props) {
           </LinearGradient>
         </TouchableOpacity>
 
+        {renderGrupo('Ordens de Serviço', MENU_OS)}
         {renderGrupo('Aparência', MENU_APARENCIA)}
         {renderGrupo('Conta & Empresa', MENU_CONTA)}
 

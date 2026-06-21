@@ -1,337 +1,563 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-  Animated,
-  ScrollView,
-  Modal,
-  FlatList,
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  KeyboardAvoidingView, Platform, Alert, Animated,
+  ScrollView, Modal, FlatList, Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { carregar, salvar } from '../utils/storage';
 import type { OrdemServico } from './OSListScreen';
 import type { Cliente } from './ClientListScreen';
 import type { Tecnico } from './TecnicosListScreen';
 import { useThema } from '../contexts/ThemeContext';
 import { AppTema } from '../utils/temas';
+import { CampoConfig, CAMPOS_PADRAO, SECAO_CORES } from '../utils/camposOS';
 
-const POSICOES = ['BB', 'BE', 'Vante', 'Ré', 'Outro'];
-const TIPOS = ['Preventiva', 'Corretiva', 'Revisão', 'Instalação'];
+const POSICOES       = ['BB', 'BE', 'Vante', 'Ré', 'Outro'];
+const TIPOS          = ['Preventiva', 'Corretiva', 'Revisão', 'Instalação', 'Diagnóstico'];
+const PRIORIDADES    = ['Baixa', 'Normal', 'Alta', 'Urgente'] as const;
+const FORMAS_PAG     = ['PIX', 'Cartão', 'Boleto', 'Dinheiro', 'Transferência'];
+const TIPOS_VEICULO  = ['Barco', 'Caminhão', 'Automóvel', 'Moto', 'Máquina', 'Outro'];
 
-function formatarDataInput(valor: string) {
-  const nums = valor.replace(/\D/g, '').slice(0, 8);
-  if (nums.length <= 2) return nums;
-  if (nums.length <= 4) return `${nums.slice(0, 2)}/${nums.slice(2)}`;
-  return `${nums.slice(0, 2)}/${nums.slice(2, 4)}/${nums.slice(4)}`;
+function formatarData(v: string) {
+  const n = v.replace(/\D/g, '').slice(0, 8);
+  if (n.length <= 2) return n;
+  if (n.length <= 4) return `${n.slice(0, 2)}/${n.slice(2)}`;
+  return `${n.slice(0, 2)}/${n.slice(2, 4)}/${n.slice(4)}`;
 }
 
-function dataParaISO(dataBR: string): string | undefined {
-  const partes = dataBR.split('/');
-  if (partes.length !== 3 || partes[2].length !== 4) return undefined;
-  return `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
+function dataParaISO(br: string): string | undefined {
+  const p = br.split('/');
+  if (p.length !== 3 || p[2].length !== 4) return undefined;
+  return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
 }
 
 type Props = {
   onVoltar: () => void;
   onSalvo: () => void;
   onIrParaClientes: () => void;
-  dataAgendadaInicial?: string;  // DD/MM/AAAA pré-preenchida vinda da Agenda
+  dataAgendadaInicial?: string;
 };
 
 export default function OSFormScreen({ onVoltar, onSalvo, onIrParaClientes, dataAgendadaInicial }: Props) {
-  const tema = useThema();
+  const tema   = useThema();
   const styles = useMemo(() => criarEstilos(tema), [tema]);
-  const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(null);
-  const [modalAberto, setModalAberto] = useState(false);
-  const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
-  const [tecnicoSelecionado, setTecnicoSelecionado] = useState<Tecnico | null>(null);
-  const [modalTecnicoAberto, setModalTecnicoAberto] = useState(false);
 
-  const [motor, setMotor] = useState('');
-  const [posicao, setPosicao] = useState('');
-  const [tipoManutencao, setTipoManutencao] = useState('');
-  const [descricao, setDescricao] = useState('');
-  const [dataAgendada, setDataAgendada] = useState(dataAgendadaInicial ?? '');
-  const [salvando, setSalvando] = useState(false);
+  // dados base
+  const [clientes, setClientes]       = useState<Cliente[]>([]);
+  const [tecnicos, setTecnicos]       = useState<Tecnico[]>([]);
+  const [campos, setCampos]           = useState<CampoConfig[]>(CAMPOS_PADRAO);
+  const [clienteSel, setClienteSel]   = useState<Cliente | null>(null);
+  const [tecnicoSel, setTecnicoSel]   = useState<Tecnico | null>(null);
+  const [modalCliente, setModalCliente] = useState(false);
+  const [modalTecnico, setModalTecnico] = useState(false);
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleBotao = useRef(new Animated.Value(1)).current;
+  // campos do formulário
+  const [motor, setMotor]                         = useState('');
+  const [tipoManutencao, setTipoManutencao]       = useState('');
+  const [posicao, setPosicao]                     = useState('');
+  const [descricao, setDescricao]                 = useState('');
+  const [prioridade, setPrioridade]               = useState<'Baixa'|'Normal'|'Alta'|'Urgente'>('Normal');
+  const [garantia, setGarantia]                   = useState(false);
+  const [tempoEstimado, setTempoEstimado]         = useState('');
+  const [numeroOS, setNumeroOS]                   = useState('');
+  const [modelo, setModelo]                       = useState('');
+  const [ano, setAno]                             = useState('');
+  const [placa, setPlaca]                         = useState('');
+  const [horimetro, setHorimetro]                 = useState('');
+  const [dataAgendada, setDataAgendada]           = useState(dataAgendadaInicial ?? '');
+  const [valorEstimado, setValorEstimado]         = useState('');
+  const [formaPagamento, setFormaPagamento]       = useState('');
+  const [solicitante, setSolicitante]             = useState('');
+  const [contatoSolicitante, setContatoSolicitante] = useState('');
+  const [enderecoServico, setEnderecoServico]     = useState('');
+  const [observacoesInternas, setObservacoesInternas] = useState('');
+  const [tipoVeiculo, setTipoVeiculo]             = useState('');
+  const [seguro, setSeguro]                       = useState('');
+  const [salvando, setSalvando]                   = useState(false);
 
-  const carregarClientes = useCallback(async () => {
-    const lista = await carregar<Cliente[]>('clientes');
-    setClientes(lista ?? []);
-  }, []);
+  const fade      = useRef(new Animated.Value(0)).current;
+  const scaleSave = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    carregarClientes();
-    carregar<Tecnico[]>('tecnicos').then((t) => setTecnicos(t ?? []));
-    Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+    Animated.timing(fade, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+    (async () => {
+      const [cls, tecs, cfg] = await Promise.all([
+        carregar<Cliente[]>('clientes'),
+        carregar<Tecnico[]>('tecnicos'),
+        carregar<CampoConfig[]>('camposOS'),
+      ]);
+      setClientes(cls ?? []);
+      setTecnicos(tecs ?? []);
+      if (cfg && cfg.length > 0) {
+        const merged = CAMPOS_PADRAO.map((p) => {
+          const s = cfg.find((c) => c.id === p.id);
+          return s ? { ...p, ativo: s.ativo } : p;
+        });
+        setCampos(merged);
+      }
+    })();
   }, []);
 
-  function animarToque(callback: () => void) {
-    Animated.sequence([
-      Animated.timing(scaleBotao, { toValue: 0.96, duration: 80, useNativeDriver: true }),
-      Animated.timing(scaleBotao, { toValue: 1, duration: 80, useNativeDriver: true }),
-    ]).start(callback);
+  function campoAtivo(id: string) {
+    return campos.find((c) => c.id === id)?.ativo ?? false;
   }
 
   async function handleSalvar() {
-    if (!clienteSelecionado || !motor || !posicao || !tipoManutencao) {
-      Alert.alert('Atenção', 'Selecione o cliente e preencha motor, posição e tipo de manutenção.');
-      return;
-    }
+    if (!clienteSel)      { Alert.alert('Atenção', 'Selecione o cliente.'); return; }
+    if (!motor.trim())    { Alert.alert('Atenção', 'Informe o motor/equipamento.'); return; }
+    if (!tipoManutencao)  { Alert.alert('Atenção', 'Selecione o tipo de manutenção.'); return; }
+
+    Animated.sequence([
+      Animated.timing(scaleSave, { toValue: 0.96, duration: 70, useNativeDriver: true }),
+      Animated.timing(scaleSave, { toValue: 1,    duration: 70, useNativeDriver: true }),
+    ]).start();
 
     setSalvando(true);
-
     const novaOS: OrdemServico = {
       id: Date.now().toString(),
-      cliente: clienteSelecionado.nome,
-      clienteTelefone: clienteSelecionado.telefone,
+      cliente: clienteSel.nome,
+      clienteTelefone: clienteSel.telefone,
       motor,
-      posicao,
       tipoManutencao,
-      descricao,
+      posicao: campoAtivo('posicao')     ? posicao     : undefined,
+      descricao: campoAtivo('descricao') ? descricao   : undefined,
       status: 'Aberta',
       dataCriacao: new Date().toLocaleDateString('pt-BR'),
-      dataAgendada: dataParaISO(dataAgendada),
-      tecnicoResponsavel: tecnicoSelecionado?.nome,
+      dataAgendada: campoAtivo('dataAgendada') && dataAgendada ? dataParaISO(dataAgendada) : undefined,
+      tecnicoResponsavel: campoAtivo('tecnico') && tecnicoSel ? tecnicoSel.nome : undefined,
+      prioridade: campoAtivo('prioridade') ? prioridade : undefined,
+      garantia: campoAtivo('garantia') ? garantia : undefined,
+      tempoEstimado: campoAtivo('tempoEstimado') && tempoEstimado ? tempoEstimado : undefined,
+      numeroOS: campoAtivo('numeroOS') && numeroOS ? numeroOS : undefined,
+      modelo: campoAtivo('modelo') && modelo ? modelo : undefined,
+      ano: campoAtivo('ano') && ano ? ano : undefined,
+      placa: campoAtivo('placa') && placa ? placa : undefined,
+      horimetro: campoAtivo('horimetro') && horimetro ? horimetro : undefined,
+      valorEstimado: campoAtivo('valorEstimado') && valorEstimado ? valorEstimado : undefined,
+      formaPagamento: campoAtivo('formaPagamento') && formaPagamento ? formaPagamento : undefined,
+      solicitante: campoAtivo('solicitante') && solicitante ? solicitante : undefined,
+      contatoSolicitante: campoAtivo('contatoSolicitante') && contatoSolicitante ? contatoSolicitante : undefined,
+      enderecoServico: campoAtivo('enderecoServico') && enderecoServico ? enderecoServico : undefined,
+      observacoesInternas: campoAtivo('observacoesInternas') && observacoesInternas ? observacoesInternas : undefined,
+      tipoVeiculo: campoAtivo('tipoVeiculo') && tipoVeiculo ? tipoVeiculo : undefined,
+      seguro: campoAtivo('seguro') && seguro ? seguro : undefined,
     };
-
-    const listaAtual = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
-    listaAtual.push(novaOS);
-    await salvar('ordensServico', listaAtual);
-
+    const lista = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
+    lista.push(novaOS);
+    await salvar('ordensServico', lista);
     setSalvando(false);
     onSalvo();
   }
 
-  function selecionarCliente(cliente: Cliente) {
-    setClienteSelecionado(cliente);
-    setModalAberto(false);
+  // ── Componentes de apoio ──────────────────────────────────
+
+  function Secao({ titulo, icone, cor, children }: { titulo: string; icone: string; cor: string; children: React.ReactNode }) {
+    return (
+      <View style={styles.secao}>
+        <View style={styles.secaoHeader}>
+          <View style={[styles.secaoIcone, { backgroundColor: cor + '20' }]}>
+            <Ionicons name={icone as any} size={13} color={cor} />
+          </View>
+          <Text style={[styles.secaoTitulo, { color: cor }]}>{titulo}</Text>
+          <View style={[styles.secaoLinha, { backgroundColor: cor + '30' }]} />
+        </View>
+        <View style={[styles.secaoCard, { backgroundColor: tema.card, borderColor: tema.borda }]}>
+          {children}
+        </View>
+      </View>
+    );
   }
 
+  function Campo({ children, separator }: { children: React.ReactNode; separator?: boolean }) {
+    return (
+      <View style={[styles.campo, separator && { borderTopWidth: 1, borderTopColor: tema.borda }]}>
+        {children}
+      </View>
+    );
+  }
+
+  function CampoLabel({ texto }: { texto: string }) {
+    return <Text style={[styles.campoLabel, { color: tema.textoMuted }]}>{texto}</Text>;
+  }
+
+  function InputTexto({ value, onChange, placeholder, icon, multiline, teclado, maxLen }: {
+    value: string; onChange: (v: string) => void; placeholder: string;
+    icon?: string; multiline?: boolean; teclado?: any; maxLen?: number;
+  }) {
+    return (
+      <View style={[styles.inputRow, { backgroundColor: tema.fundo, borderColor: tema.borda }, multiline && styles.inputRowMultiline]}>
+        {icon && <Ionicons name={icon as any} size={16} color={tema.textoFraco} />}
+        <TextInput
+          style={[styles.inputTexto, { color: tema.texto }, multiline && styles.inputMultiline]}
+          placeholder={placeholder}
+          placeholderTextColor={tema.textoFraco}
+          value={value}
+          onChangeText={onChange}
+          multiline={multiline}
+          textAlignVertical={multiline ? 'top' : 'center'}
+          keyboardType={teclado}
+          maxLength={maxLen}
+        />
+      </View>
+    );
+  }
+
+  function Chips({ opcoes, selecionado, onSelect, cor }: {
+    opcoes: readonly string[]; selecionado: string; onSelect: (v: string) => void; cor?: string;
+  }) {
+    const corAtiva = cor ?? tema.primario;
+    return (
+      <View style={styles.chipsRow}>
+        {opcoes.map((op) => {
+          const sel = selecionado === op;
+          return (
+            <TouchableOpacity
+              key={op}
+              style={[styles.chip, { borderColor: sel ? corAtiva : tema.borda, backgroundColor: sel ? corAtiva + '15' : tema.fundo }]}
+              onPress={() => onSelect(sel ? '' : op)}
+              activeOpacity={0.75}
+            >
+              {sel && <Ionicons name="checkmark" size={11} color={corAtiva} />}
+              <Text style={[styles.chipTexto, { color: sel ? corAtiva : tema.textoMuted, fontWeight: sel ? '700' : '500' }]}>
+                {op}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    );
+  }
+
+  function Seletor({ label, valor, placeholder, icon, onPress, onClear }: {
+    label?: string; valor: string; placeholder: string; icon: string;
+    onPress: () => void; onClear?: () => void;
+  }) {
+    return (
+      <TouchableOpacity
+        style={[styles.seletor, { backgroundColor: tema.fundo, borderColor: valor ? tema.primario + '55' : tema.borda }]}
+        onPress={onPress}
+        activeOpacity={0.8}
+      >
+        <Ionicons name={icon as any} size={16} color={valor ? tema.primario : tema.textoFraco} />
+        <Text style={[styles.seletorTexto, { color: valor ? tema.texto : tema.textoFraco }]} numberOfLines={1}>
+          {valor || placeholder}
+        </Text>
+        {valor && onClear ? (
+          <TouchableOpacity onPress={onClear} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="close-circle" size={18} color={tema.textoFraco} />
+          </TouchableOpacity>
+        ) : (
+          <Ionicons name="chevron-down" size={16} color={tema.textoFraco} />
+        )}
+      </TouchableOpacity>
+    );
+  }
+
+  const PRIORIDADE_CORES: Record<string, string> = {
+    Baixa: '#16a34a', Normal: tema.primario, Alta: '#d97706', Urgente: '#dc2626',
+  };
+
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onVoltar} style={[styles.voltarBotao, { backgroundColor: tema.card, borderColor: tema.borda }]}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+
+      {/* Header com gradiente */}
+      <View style={styles.headerWrap}>
+        <LinearGradient
+          colors={[tema.primario + '28', tema.fundo + '00'] as any}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+        <TouchableOpacity
+          onPress={onVoltar}
+          style={[styles.backBtn, { backgroundColor: tema.card, borderColor: tema.borda }]}
+        >
           <Ionicons name="arrow-back" size={20} color={tema.texto} />
         </TouchableOpacity>
-        <Text style={styles.titulo}>Nova Ordem de Serviço</Text>
-        <View style={{ width: 36 }} />
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.titulo, { color: tema.texto }]}>Nova OS</Text>
+          <Text style={[styles.subtitulo, { color: tema.textoMuted }]}>Ordem de Serviço</Text>
+        </View>
+        <View style={[styles.osNumBadge, { backgroundColor: tema.primario + '20', borderColor: tema.primario + '40' }]}>
+          <Ionicons name="document-text" size={12} color={tema.primario} />
+          <Text style={[styles.osNumTexto, { color: tema.primario }]}>
+            {new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+          </Text>
+        </View>
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Animated.View style={{ opacity: fadeAnim }}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Cliente</Text>
+        <Animated.View style={{ opacity: fade }}>
 
-            {clientes.length === 0 ? (
-              <TouchableOpacity
-                style={styles.avisoSemCliente}
-                onPress={onIrParaClientes}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="alert-circle-outline" size={18} color="#d97706" />
-                <Text style={styles.avisoTexto}>
-                  Nenhum cliente cadastrado. Toque aqui para cadastrar o primeiro.
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={styles.seletorWrapper}
-                onPress={() => setModalAberto(true)}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="business-outline" size={18} color="#64748b" style={styles.inputIcon} />
-                <Text
-                  style={[
-                    styles.seletorTexto,
-                    !clienteSelecionado && styles.seletorPlaceholder,
-                  ]}
-                >
-                  {clienteSelecionado ? clienteSelecionado.nome : 'Selecionar cliente'}
-                </Text>
-                <Ionicons name="chevron-down" size={18} color="#64748b" />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Motor / Equipamento</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="cog-outline" size={18} color="#64748b" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: Motor Volvo Penta D13"
-                placeholderTextColor="#475569"
-                value={motor}
-                onChangeText={setMotor}
-              />
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Posição</Text>
-            <View style={styles.chipsContainer}>
-              {POSICOES.map((p) => (
-                <TouchableOpacity
-                  key={p}
-                  style={[styles.chip, posicao === p && styles.chipAtivo]}
-                  onPress={() => setPosicao(p)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.chipText, posicao === p && styles.chipTextAtivo]}>
-                    {p}
-                  </Text>
+          {/* ── DADOS ESSENCIAIS ── */}
+          <Secao titulo="Dados Essenciais" icone="star-outline" cor={tema.primario}>
+            {/* Cliente */}
+            <Campo>
+              <CampoLabel texto="Cliente *" />
+              {clientes.length === 0 ? (
+                <TouchableOpacity style={[styles.alertaCliente, { backgroundColor: '#d9770618', borderColor: '#d9770644' }]} onPress={onIrParaClientes} activeOpacity={0.8}>
+                  <Ionicons name="alert-circle-outline" size={16} color="#d97706" />
+                  <Text style={styles.alertaClienteTexto}>Nenhum cliente cadastrado. Toque para cadastrar.</Text>
                 </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+              ) : (
+                <Seletor
+                  valor={clienteSel?.nome ?? ''}
+                  placeholder="Selecionar cliente"
+                  icon="business-outline"
+                  onPress={() => setModalCliente(true)}
+                  onClear={() => setClienteSel(null)}
+                />
+              )}
+            </Campo>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Tipo de manutenção</Text>
-            <View style={styles.chipsContainer}>
-              {TIPOS.map((t) => (
-                <TouchableOpacity
-                  key={t}
-                  style={[styles.chip, tipoManutencao === t && styles.chipAtivo]}
-                  onPress={() => setTipoManutencao(t)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.chipText, tipoManutencao === t && styles.chipTextAtivo]}>
-                    {t}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+            {/* Motor */}
+            <Campo separator>
+              <CampoLabel texto="Motor / Equipamento *" />
+              <InputTexto value={motor} onChange={setMotor} placeholder="Ex: Motor Volvo Penta D13" icon="cog-outline" />
+            </Campo>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Descrição do serviço</Text>
-            <View style={[styles.inputWrapper, styles.textareaWrapper]}>
-              <TextInput
-                style={[styles.input, styles.textarea]}
-                placeholder="Descreva o serviço a ser realizado..."
-                placeholderTextColor="#475569"
-                value={descricao}
-                onChangeText={setDescricao}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-            </View>
-          </View>
+            {/* Tipo de manutenção */}
+            <Campo separator>
+              <CampoLabel texto="Tipo de Manutenção *" />
+              <Chips opcoes={TIPOS} selecionado={tipoManutencao} onSelect={setTipoManutencao} />
+            </Campo>
+          </Secao>
 
-          {/* Data agendada */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Data agendada (opcional)</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="calendar-outline" size={18} color="#64748b" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="DD/MM/AAAA"
-                placeholderTextColor="#475569"
-                value={dataAgendada}
-                onChangeText={(v) => setDataAgendada(formatarDataInput(v))}
-                keyboardType="numeric"
-                maxLength={10}
-              />
-            </View>
-          </View>
-
-          {/* Técnico responsável */}
-          {tecnicos.length > 0 && (
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Técnico responsável (opcional)</Text>
-              <TouchableOpacity
-                style={styles.seletorWrapper}
-                onPress={() => setModalTecnicoAberto(true)}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="person-outline" size={18} color="#64748b" style={styles.inputIcon} />
-                <Text style={[styles.seletorTexto, !tecnicoSelecionado && styles.seletorPlaceholder]}>
-                  {tecnicoSelecionado ? tecnicoSelecionado.nome : 'Selecionar técnico'}
-                </Text>
-                {tecnicoSelecionado ? (
-                  <TouchableOpacity onPress={() => setTecnicoSelecionado(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Ionicons name="close-circle" size={18} color="#64748b" />
-                  </TouchableOpacity>
-                ) : (
-                  <Ionicons name="chevron-down" size={18} color="#64748b" />
-                )}
-              </TouchableOpacity>
-            </View>
+          {/* ── SERVIÇO ── */}
+          {(campoAtivo('posicao') || campoAtivo('descricao') || campoAtivo('prioridade') || campoAtivo('garantia') || campoAtivo('tempoEstimado') || campoAtivo('numeroOS')) && (
+            <Secao titulo="Serviço" icone="construct-outline" cor={SECAO_CORES['Serviço']}>
+              {campoAtivo('posicao') && (
+                <Campo>
+                  <CampoLabel texto="Posição" />
+                  <Chips opcoes={POSICOES} selecionado={posicao} onSelect={setPosicao} cor={SECAO_CORES['Serviço']} />
+                </Campo>
+              )}
+              {campoAtivo('descricao') && (
+                <Campo separator={campoAtivo('posicao')}>
+                  <CampoLabel texto="Descrição do Serviço" />
+                  <InputTexto value={descricao} onChange={setDescricao} placeholder="Descreva o que será executado..." multiline />
+                </Campo>
+              )}
+              {campoAtivo('prioridade') && (
+                <Campo separator={campoAtivo('posicao') || campoAtivo('descricao')}>
+                  <CampoLabel texto="Prioridade" />
+                  <Chips opcoes={PRIORIDADES} selecionado={prioridade} onSelect={(v) => setPrioridade(v as any || 'Normal')} cor={PRIORIDADE_CORES[prioridade]} />
+                </Campo>
+              )}
+              {campoAtivo('garantia') && (
+                <Campo separator>
+                  <View style={styles.switchRow}>
+                    <View>
+                      <Text style={[styles.switchLabel, { color: tema.texto }]}>Coberto por garantia</Text>
+                      <Text style={[styles.switchSub, { color: tema.textoFraco }]}>O serviço está dentro do período de garantia</Text>
+                    </View>
+                    <Switch
+                      value={garantia}
+                      onValueChange={setGarantia}
+                      trackColor={{ false: tema.borda, true: '#16a34a80' }}
+                      thumbColor={garantia ? '#16a34a' : tema.textoFraco}
+                    />
+                  </View>
+                </Campo>
+              )}
+              {campoAtivo('tempoEstimado') && (
+                <Campo separator>
+                  <CampoLabel texto="Tempo Estimado" />
+                  <InputTexto value={tempoEstimado} onChange={setTempoEstimado} placeholder="Ex: 2 horas, 3 dias" icon="time-outline" />
+                </Campo>
+              )}
+              {campoAtivo('numeroOS') && (
+                <Campo separator>
+                  <CampoLabel texto="Número da OS" />
+                  <InputTexto value={numeroOS} onChange={setNumeroOS} placeholder="Ex: OS-2024-001" icon="barcode-outline" />
+                </Campo>
+              )}
+            </Secao>
           )}
 
-          <Animated.View style={{ transform: [{ scale: scaleBotao }], marginTop: 8 }}>
+          {/* ── EQUIPAMENTO ── */}
+          {(campoAtivo('modelo') || campoAtivo('ano') || campoAtivo('placa') || campoAtivo('horimetro') || campoAtivo('tipoVeiculo')) && (
+            <Secao titulo="Equipamento" icone="cog-outline" cor={SECAO_CORES['Equipamento']}>
+              {campoAtivo('tipoVeiculo') && (
+                <Campo>
+                  <CampoLabel texto="Tipo de Veículo" />
+                  <Chips opcoes={TIPOS_VEICULO} selecionado={tipoVeiculo} onSelect={setTipoVeiculo} cor={SECAO_CORES['Equipamento']} />
+                </Campo>
+              )}
+              {campoAtivo('modelo') && (
+                <Campo separator={campoAtivo('tipoVeiculo')}>
+                  <CampoLabel texto="Modelo" />
+                  <InputTexto value={modelo} onChange={setModelo} placeholder="Ex: Civic EXL 2022" icon="car-outline" />
+                </Campo>
+              )}
+              {campoAtivo('ano') && (
+                <Campo separator>
+                  <CampoLabel texto="Ano de Fabricação" />
+                  <InputTexto value={ano} onChange={setAno} placeholder="Ex: 2023" icon="calendar-outline" teclado="numeric" maxLen={4} />
+                </Campo>
+              )}
+              {campoAtivo('placa') && (
+                <Campo separator>
+                  <CampoLabel texto="Placa / Nº de Série" />
+                  <InputTexto value={placa} onChange={(v) => setPlaca(v.toUpperCase())} placeholder="Ex: ABC-1234 ou SN123456" icon="qr-code-outline" />
+                </Campo>
+              )}
+              {campoAtivo('horimetro') && (
+                <Campo separator>
+                  <CampoLabel texto="Horímetro / KM" />
+                  <InputTexto value={horimetro} onChange={setHorimetro} placeholder="Ex: 87.500 km ou 1.200 h" icon="speedometer-outline" />
+                </Campo>
+              )}
+            </Secao>
+          )}
+
+          {/* ── AGENDAMENTO ── */}
+          {(campoAtivo('dataAgendada') || (campoAtivo('tecnico') && tecnicos.length > 0)) && (
+            <Secao titulo="Agendamento" icone="calendar-outline" cor={SECAO_CORES['Agendamento']}>
+              {campoAtivo('dataAgendada') && (
+                <Campo>
+                  <CampoLabel texto="Data Agendada" />
+                  <InputTexto
+                    value={dataAgendada}
+                    onChange={(v) => setDataAgendada(formatarData(v))}
+                    placeholder="DD/MM/AAAA"
+                    icon="calendar-outline"
+                    teclado="numeric"
+                    maxLen={10}
+                  />
+                </Campo>
+              )}
+              {campoAtivo('tecnico') && tecnicos.length > 0 && (
+                <Campo separator={campoAtivo('dataAgendada')}>
+                  <CampoLabel texto="Técnico Responsável" />
+                  <Seletor
+                    valor={tecnicoSel?.nome ?? ''}
+                    placeholder="Selecionar técnico"
+                    icon="person-outline"
+                    onPress={() => setModalTecnico(true)}
+                    onClear={() => setTecnicoSel(null)}
+                  />
+                </Campo>
+              )}
+            </Secao>
+          )}
+
+          {/* ── FINANCEIRO ── */}
+          {(campoAtivo('valorEstimado') || campoAtivo('formaPagamento')) && (
+            <Secao titulo="Financeiro" icone="cash-outline" cor={SECAO_CORES['Financeiro']}>
+              {campoAtivo('valorEstimado') && (
+                <Campo>
+                  <CampoLabel texto="Valor Estimado (R$)" />
+                  <InputTexto value={valorEstimado} onChange={setValorEstimado} placeholder="0,00" icon="logo-usd" teclado="decimal-pad" />
+                </Campo>
+              )}
+              {campoAtivo('formaPagamento') && (
+                <Campo separator={campoAtivo('valorEstimado')}>
+                  <CampoLabel texto="Forma de Pagamento" />
+                  <Chips opcoes={FORMAS_PAG} selecionado={formaPagamento} onSelect={setFormaPagamento} cor={SECAO_CORES['Financeiro']} />
+                </Campo>
+              )}
+            </Secao>
+          )}
+
+          {/* ── SOLICITANTE ── */}
+          {(campoAtivo('solicitante') || campoAtivo('contatoSolicitante') || campoAtivo('enderecoServico')) && (
+            <Secao titulo="Solicitante" icone="person-outline" cor={SECAO_CORES['Solicitante']}>
+              {campoAtivo('solicitante') && (
+                <Campo>
+                  <CampoLabel texto="Nome do Solicitante" />
+                  <InputTexto value={solicitante} onChange={setSolicitante} placeholder="Quem abriu o chamado" icon="person-outline" />
+                </Campo>
+              )}
+              {campoAtivo('contatoSolicitante') && (
+                <Campo separator={campoAtivo('solicitante')}>
+                  <CampoLabel texto="Contato do Solicitante" />
+                  <InputTexto value={contatoSolicitante} onChange={setContatoSolicitante} placeholder="(00) 00000-0000 ou e-mail" icon="call-outline" teclado="phone-pad" />
+                </Campo>
+              )}
+              {campoAtivo('enderecoServico') && (
+                <Campo separator={campoAtivo('solicitante') || campoAtivo('contatoSolicitante')}>
+                  <CampoLabel texto="Endereço do Serviço" />
+                  <InputTexto value={enderecoServico} onChange={setEnderecoServico} placeholder="Onde o serviço será realizado" icon="location-outline" />
+                </Campo>
+              )}
+            </Secao>
+          )}
+
+          {/* ── EXTRAS ── */}
+          {(campoAtivo('observacoesInternas') || campoAtivo('seguro')) && (
+            <Secao titulo="Extras" icone="ellipsis-horizontal-outline" cor={SECAO_CORES['Extras']}>
+              {campoAtivo('observacoesInternas') && (
+                <Campo>
+                  <CampoLabel texto="Observações Internas" />
+                  <InputTexto value={observacoesInternas} onChange={setObservacoesInternas} placeholder="Notas internas — não aparecem no PDF" multiline />
+                </Campo>
+              )}
+              {campoAtivo('seguro') && (
+                <Campo separator={campoAtivo('observacoesInternas')}>
+                  <CampoLabel texto="Nº do Seguro" />
+                  <InputTexto value={seguro} onChange={setSeguro} placeholder="Número da apólice de seguro" icon="shield-outline" />
+                </Campo>
+              )}
+            </Secao>
+          )}
+
+          {/* Botão salvar */}
+          <Animated.View style={{ transform: [{ scale: scaleSave }], marginTop: 8 }}>
             <TouchableOpacity
-              style={styles.button}
-              onPress={() => animarToque(handleSalvar)}
+              style={[styles.salvarBtn, { backgroundColor: tema.primario, shadowColor: tema.primario }, salvando && { opacity: 0.7 }]}
+              onPress={handleSalvar}
               disabled={salvando}
               activeOpacity={0.9}
             >
-              <Text style={styles.buttonText}>
-                {salvando ? 'Salvando...' : 'Salvar Ordem de Serviço'}
-              </Text>
-              {!salvando && (
-                <Ionicons name="checkmark" size={18} color="#ffffff" style={{ marginLeft: 6 }} />
-              )}
+              {salvando
+                ? <Text style={styles.salvarBtnTexto}>Salvando...</Text>
+                : <>
+                    <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                    <Text style={styles.salvarBtnTexto}>Salvar Ordem de Serviço</Text>
+                  </>
+              }
             </TouchableOpacity>
           </Animated.View>
+
         </Animated.View>
       </ScrollView>
 
-      {/* Modal de seleção de cliente */}
-      <Modal
-        visible={modalAberto}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setModalAberto(false)}
-      >
+      {/* Modal cliente */}
+      <Modal visible={modalCliente} animationType="slide" transparent onRequestClose={() => setModalCliente(false)}>
         <View style={styles.modalFundo}>
-          <View style={styles.modalConteudo}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitulo}>Selecionar Cliente</Text>
-              <TouchableOpacity onPress={() => setModalAberto(false)}>
-                <Ionicons name="close" size={24} color="#94a3b8" />
+          <View style={[styles.modalBox, { backgroundColor: tema.card }]}>
+            <View style={[styles.modalHandle, { backgroundColor: tema.borda }]} />
+            <View style={[styles.modalHeader, { borderBottomColor: tema.borda }]}>
+              <Text style={[styles.modalTitulo, { color: tema.texto }]}>Selecionar Cliente</Text>
+              <TouchableOpacity onPress={() => setModalCliente(false)} style={[styles.modalClose, { backgroundColor: tema.fundo }]}>
+                <Ionicons name="close" size={18} color={tema.textoMuted} />
               </TouchableOpacity>
             </View>
-
             <FlatList
               data={clientes}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(i) => i.id}
+              showsVerticalScrollIndicator={false}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={styles.modalItem}
-                  onPress={() => selecionarCliente(item)}
+                  style={[styles.modalItem, { borderBottomColor: tema.borda }]}
+                  onPress={() => { setClienteSel(item); setModalCliente(false); }}
                   activeOpacity={0.7}
                 >
-                  <View style={styles.modalItemIcone}>
-                    <Ionicons name="business" size={18} color="#16a34a" />
+                  <View style={[styles.modalItemIcone, { backgroundColor: '#16a34a20' }]}>
+                    <Ionicons name="business" size={16} color="#16a34a" />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.modalItemNome}>{item.nome}</Text>
-                    <Text style={styles.modalItemDetalhe}>
-                      {item.cidade}/{item.estado}
-                    </Text>
+                    <Text style={[styles.modalItemNome, { color: tema.texto }]}>{item.nome}</Text>
+                    <Text style={[styles.modalItemSub,  { color: tema.textoMuted }]}>{item.cidade}/{item.estado}</Text>
                   </View>
-                  {clienteSelecionado?.id === item.id && (
-                    <Ionicons name="checkmark-circle" size={20} color="#2563eb" />
-                  )}
+                  {clienteSel?.id === item.id && <Ionicons name="checkmark-circle" size={20} color={tema.primario} />}
                 </TouchableOpacity>
               )}
             />
@@ -339,40 +565,35 @@ export default function OSFormScreen({ onVoltar, onSalvo, onIrParaClientes, data
         </View>
       </Modal>
 
-      {/* Modal de seleção de técnico */}
-      <Modal
-        visible={modalTecnicoAberto}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setModalTecnicoAberto(false)}
-      >
+      {/* Modal técnico */}
+      <Modal visible={modalTecnico} animationType="slide" transparent onRequestClose={() => setModalTecnico(false)}>
         <View style={styles.modalFundo}>
-          <View style={styles.modalConteudo}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitulo}>Selecionar Técnico</Text>
-              <TouchableOpacity onPress={() => setModalTecnicoAberto(false)}>
-                <Ionicons name="close" size={24} color="#94a3b8" />
+          <View style={[styles.modalBox, { backgroundColor: tema.card }]}>
+            <View style={[styles.modalHandle, { backgroundColor: tema.borda }]} />
+            <View style={[styles.modalHeader, { borderBottomColor: tema.borda }]}>
+              <Text style={[styles.modalTitulo, { color: tema.texto }]}>Selecionar Técnico</Text>
+              <TouchableOpacity onPress={() => setModalTecnico(false)} style={[styles.modalClose, { backgroundColor: tema.fundo }]}>
+                <Ionicons name="close" size={18} color={tema.textoMuted} />
               </TouchableOpacity>
             </View>
             <FlatList
               data={tecnicos}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(i) => i.id}
+              showsVerticalScrollIndicator={false}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={styles.modalItem}
-                  onPress={() => { setTecnicoSelecionado(item); setModalTecnicoAberto(false); }}
+                  style={[styles.modalItem, { borderBottomColor: tema.borda }]}
+                  onPress={() => { setTecnicoSel(item); setModalTecnico(false); }}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.modalItemIcone, { backgroundColor: '#9333ea22' }]}>
-                    <Ionicons name="person" size={18} color="#9333ea" />
+                  <View style={[styles.modalItemIcone, { backgroundColor: '#9333ea20' }]}>
+                    <Ionicons name="person" size={16} color="#9333ea" />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.modalItemNome}>{item.nome}</Text>
-                    <Text style={styles.modalItemDetalhe}>{item.cargo}</Text>
+                    <Text style={[styles.modalItemNome, { color: tema.texto }]}>{item.nome}</Text>
+                    <Text style={[styles.modalItemSub,  { color: tema.textoMuted }]}>{item.cargo}</Text>
                   </View>
-                  {tecnicoSelecionado?.id === item.id && (
-                    <Ionicons name="checkmark-circle" size={20} color="#9333ea" />
-                  )}
+                  {tecnicoSel?.id === item.id && <Ionicons name="checkmark-circle" size={20} color="#9333ea" />}
                 </TouchableOpacity>
               )}
             />
@@ -386,74 +607,94 @@ export default function OSFormScreen({ onVoltar, onSalvo, onIrParaClientes, data
 function criarEstilos(t: AppTema) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: t.fundo },
-    header: {
-      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-      paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16,
+
+    headerWrap: {
+      flexDirection: 'row', alignItems: 'center', gap: 14,
+      paddingHorizontal: 20, paddingTop: 58, paddingBottom: 18, overflow: 'hidden',
     },
-    voltarBotao: {
-      width: 36, height: 36, borderRadius: 10, backgroundColor: t.card,
-      borderWidth: 1, borderColor: t.borda, alignItems: 'center', justifyContent: 'center',
+    backBtn: {
+      width: 40, height: 40, borderRadius: 12, borderWidth: 1,
+      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     },
-    titulo: { color: t.texto, fontSize: 17, fontWeight: '700' },
-    scrollContent: { padding: 20, paddingTop: 4, paddingBottom: 40 },
-    inputGroup: { marginBottom: 16 },
-    label: { color: t.textoSec, fontSize: 12, marginBottom: 6, fontWeight: '500' },
-    inputWrapper: {
-      flexDirection: 'row', alignItems: 'center', backgroundColor: t.card,
-      borderRadius: 10, borderWidth: 1, borderColor: t.borda, paddingHorizontal: 14,
+    titulo:    { color: t.texto,    fontSize: 20, fontWeight: '800', letterSpacing: -0.5 },
+    subtitulo: { color: t.textoMuted, fontSize: 11, marginTop: 1 },
+    osNumBadge: {
+      flexDirection: 'row', alignItems: 'center', gap: 4,
+      paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, borderWidth: 1,
     },
-    inputIcon: { marginRight: 8 },
-    input: { flex: 1, color: t.texto, fontSize: 15, paddingVertical: 13 },
-    textareaWrapper: { alignItems: 'flex-start', paddingVertical: 10 },
-    textarea: { minHeight: 90, paddingVertical: 4 },
-    chipsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    osNumTexto: { fontSize: 11, fontWeight: '700' },
+
+    scroll: { paddingHorizontal: 20, paddingBottom: 48, paddingTop: 4 },
+
+    // Seções
+    secao:       { marginBottom: 20 },
+    secaoHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+    secaoIcone:  { width: 24, height: 24, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
+    secaoTitulo: { fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6 },
+    secaoLinha:  { flex: 1, height: 1 },
+    secaoCard:   { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+
+    // Campos
+    campo:      { padding: 14 },
+    campoLabel: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 },
+
+    // Input texto
+    inputRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, minHeight: 46,
+    },
+    inputRowMultiline: { alignItems: 'flex-start', paddingVertical: 12 },
+    inputTexto: { flex: 1, fontSize: 14, paddingVertical: 0 },
+    inputMultiline: { minHeight: 80, paddingTop: 0 },
+
+    // Chips
+    chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
     chip: {
-      paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20,
-      backgroundColor: t.card, borderWidth: 1, borderColor: t.borda,
+      flexDirection: 'row', alignItems: 'center', gap: 4,
+      paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1,
     },
-    chipAtivo: { backgroundColor: t.primario, borderColor: t.primario },
-    chipText: { color: t.textoMuted, fontSize: 13, fontWeight: '500' },
-    chipTextAtivo: { color: '#ffffff' },
-    button: {
-      backgroundColor: t.primario, borderRadius: 10, paddingVertical: 15,
-      flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-      shadowColor: t.primario, shadowOpacity: 0.3, shadowRadius: 10,
-      shadowOffset: { width: 0, height: 4 }, elevation: 4,
+    chipTexto: { fontSize: 12 },
+
+    // Seletor
+    seletor: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 13,
     },
-    buttonText: { color: '#ffffff', fontSize: 15, fontWeight: '600' },
-    seletorWrapper: {
-      flexDirection: 'row', alignItems: 'center', backgroundColor: t.card,
-      borderRadius: 10, borderWidth: 1, borderColor: t.borda,
-      paddingHorizontal: 14, paddingVertical: 13,
+    seletorTexto: { flex: 1, fontSize: 14 },
+
+    // Switch row
+    switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    switchLabel: { fontSize: 14, fontWeight: '600' },
+    switchSub:   { fontSize: 11, marginTop: 2 },
+
+    // Alerta cliente
+    alertaCliente: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      borderRadius: 12, borderWidth: 1, padding: 13,
     },
-    seletorTexto: { flex: 1, color: t.texto, fontSize: 15 },
-    seletorPlaceholder: { color: t.textoFraco },
-    avisoSemCliente: {
-      flexDirection: 'row', alignItems: 'center',
-      backgroundColor: '#d9770622', borderRadius: 10,
-      borderWidth: 1, borderColor: '#d9770655', padding: 14,
+    alertaClienteTexto: { color: '#d97706', fontSize: 13, flex: 1 },
+
+    // Botão salvar
+    salvarBtn: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+      borderRadius: 16, paddingVertical: 17, marginBottom: 8,
+      shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 5 }, elevation: 5,
     },
-    avisoTexto: { color: '#d97706', fontSize: 13, marginLeft: 8, flex: 1 },
-    modalFundo: { flex: 1, backgroundColor: '#00000099', justifyContent: 'flex-end' },
-    modalConteudo: {
-      backgroundColor: t.card, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-      maxHeight: '70%', paddingBottom: 30,
-    },
+    salvarBtnTexto: { color: '#fff', fontSize: 16, fontWeight: '700' },
+
+    // Modais
+    modalFundo: { flex: 1, backgroundColor: '#00000080', justifyContent: 'flex-end' },
+    modalBox:   { borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '72%', paddingBottom: 32 },
+    modalHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginVertical: 14 },
     modalHeader: {
       flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-      padding: 20, borderBottomWidth: 1, borderBottomColor: t.borda,
+      paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1,
     },
-    modalTitulo: { color: t.texto, fontSize: 16, fontWeight: '700' },
-    modalItem: {
-      flexDirection: 'row', alignItems: 'center',
-      paddingHorizontal: 20, paddingVertical: 14,
-      borderBottomWidth: 1, borderBottomColor: t.borda,
-    },
-    modalItemIcone: {
-      width: 36, height: 36, borderRadius: 10, backgroundColor: '#16a34a22',
-      alignItems: 'center', justifyContent: 'center', marginRight: 12,
-    },
-    modalItemNome: { color: t.texto, fontSize: 14, fontWeight: '600' },
-    modalItemDetalhe: { color: t.textoMuted, fontSize: 12, marginTop: 2 },
+    modalTitulo: { fontSize: 16, fontWeight: '700' },
+    modalClose:  { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+    modalItem:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1 },
+    modalItemIcone: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    modalItemNome:  { fontSize: 14, fontWeight: '600' },
+    modalItemSub:   { fontSize: 12, marginTop: 2 },
   });
 }

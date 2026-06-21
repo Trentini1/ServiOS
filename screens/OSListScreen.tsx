@@ -20,9 +20,9 @@ export type OrdemServico = {
   cliente: string;
   clienteTelefone?: string;
   motor: string;
-  posicao: string;
+  posicao?: string;
   tipoManutencao: string;
-  descricao: string;
+  descricao?: string;
   status: 'Aberta' | 'Em Andamento' | 'Concluída';
   dataCriacao: string;
   dataAgendada?: string;
@@ -33,6 +33,23 @@ export type OrdemServico = {
   assinaturaTecnico?: string;
   assinaturaCliente?: string;
   temaPdfId?: string;
+  // campos opcionais configuráveis
+  prioridade?: 'Baixa' | 'Normal' | 'Alta' | 'Urgente';
+  garantia?: boolean;
+  tempoEstimado?: string;
+  numeroOS?: string;
+  modelo?: string;
+  ano?: string;
+  placa?: string;
+  horimetro?: string;
+  valorEstimado?: string;
+  formaPagamento?: string;
+  solicitante?: string;
+  contatoSolicitante?: string;
+  enderecoServico?: string;
+  observacoesInternas?: string;
+  tipoVeiculo?: string;
+  seguro?: string;
 };
 
 type Props = {

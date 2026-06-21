@@ -18,6 +18,7 @@ import TemaPdfScreen from './screens/TemaPdfScreen';
 import EdicaoEmpresaScreen from './screens/EdicaoEmpresaScreen';
 import AlterarSenhaScreen from './screens/AlterarSenhaScreen';
 import LicencaScreen from './screens/LicencaScreen';
+import CamposOSScreen from './screens/CamposOSScreen';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { salvar, carregar, remover } from './utils/storage';
 
@@ -35,7 +36,7 @@ type Tela =
   | 'agenda' | 'relatorios'
   | 'tecnicos-lista' | 'tecnicos-form' | 'tecnico-editar'
   | 'configuracoes' | 'tema-app' | 'tema-pdf'
-  | 'edicao-empresa' | 'alterar-senha' | 'licenca';
+  | 'edicao-empresa' | 'alterar-senha' | 'licenca' | 'campos-os';
 
 function AppInner() {
   const [carregandoApp, setCarregandoApp] = useState(true);
@@ -206,7 +207,8 @@ function AppInner() {
   if (telaAtual === 'tema-pdf')       return <TemaPdfScreen      onVoltar={() => irPara('configuracoes')} />;
   if (telaAtual === 'edicao-empresa') return <EdicaoEmpresaScreen onVoltar={() => irPara('configuracoes')} />;
   if (telaAtual === 'alterar-senha')  return <AlterarSenhaScreen  onVoltar={() => irPara('configuracoes')} />;
-  if (telaAtual === 'licenca')        return <LicencaScreen       onVoltar={() => irPara('configuracoes')} />;
+  if (telaAtual === 'licenca')   return <LicencaScreen    onVoltar={() => irPara('configuracoes')} />;
+  if (telaAtual === 'campos-os') return <CamposOSScreen   onVoltar={() => irPara('configuracoes')} />;
 
   return (
     <HomeScreen
