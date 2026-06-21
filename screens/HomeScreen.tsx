@@ -1,5 +1,8 @@
-import { useRef, useEffect, useState, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated } from 'react-native';
+﻿import { useRef, useEffect, useState, useMemo } from 'react';
+import {
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  Animated, Dimensions,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { carregar } from '../utils/storage';
@@ -7,6 +10,9 @@ import { useThema } from '../contexts/ThemeContext';
 import { AppTema } from '../utils/temas';
 import type { OrdemServico } from './OSListScreen';
 import type { Cliente } from './ClientListScreen';
+
+const { width: W } = Dimensions.get('window');
+const CARD_W = (W - 56) / 2;
 
 type Empresa = {
   nome: string; cnpj?: string; telefone?: string;
@@ -22,15 +28,16 @@ type Props = {
 };
 
 const MENU = [
-  { id: 'os',         titulo: 'Ordens de Serviço', icone: 'document-text',  cor: '#2563eb' },
-  { id: 'clientes',   titulo: 'Clientes',           icone: 'people',         cor: '#16a34a' },
-  { id: 'agenda',     titulo: 'Agenda',              icone: 'calendar',       cor: '#d97706' },
-  { id: 'relatorios', titulo: 'Relatórios',          icone: 'bar-chart',      cor: '#9333ea' },
-  { id: 'tecnicos',   titulo: 'Técnicos',            icone: 'construct',      cor: '#0891b2' },
+  { id: 'os',            titulo: 'Ordens de\nServiço', icone: 'document-text', gradiente: ['#2563eb', '#1d4ed8'] as const },
+  { id: 'clientes',      titulo: 'Clientes',             icone: 'people',        gradiente: ['#16a34a', '#15803d'] as const },
+  { id: 'agenda',        titulo: 'Agenda',                icone: 'calendar',      gradiente: ['#d97706', '#b45309'] as const },
+  { id: 'relatorios',    titulo: 'Relatórios',            icone: 'bar-chart',     gradiente: ['#9333ea', '#7e22ce'] as const },
+  { id: 'tecnicos',      titulo: 'Técnicos',              icone: 'construct',     gradiente: ['#0891b2', '#0e7490'] as const },
+  { id: 'configuracoes', titulo: 'Configurações',         icone: 'settings',      gradiente: ['#475569', '#334155'] as const },
 ] as const;
 
 const CORES_STATUS: Record<string, string> = {
-  Aberta: '#d97706', 'Em Andamento': '#2563eb', Concluída: '#16a34a',
+  Aberta: '#d97706', 'Em Andamento': '#2563eb', 'Concluída': '#16a34a',
 };
 
 function saudacao(): string {
@@ -41,19 +48,23 @@ function saudacao(): string {
 }
 
 export default function HomeScreen({ usuario, empresa, onSair, onAbrirMenu, onAbrirConfiguracoes }: Props) {
-  const tema = useThema();
+  const tema   = useThema();
   const styles = useMemo(() => criarEstilos(tema), [tema]);
-  const fadeAnim  = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(20)).current;
-  const [osAbertas, setOsAbertas]   = useState(0);
+
+  const fade       = useRef(new Animated.Value(0)).current;
+  const slideY     = useRef(new Animated.Value(30)).current;
+  const scaleStats = useRef(new Animated.Value(0.93)).current;
+
+  const [osAbertas, setOsAbertas]         = useState(0);
   const [totalClientes, setTotalClientes] = useState(0);
-  const [agendadas, setAgendadas]   = useState(0);
-  const [recentes, setRecentes]     = useState<OrdemServico[]>([]);
+  const [agendadas, setAgendadas]         = useState(0);
+  const [recentes, setRecentes]           = useState<OrdemServico[]>([]);
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim,  { toValue: 1, duration: 600, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
+      Animated.timing(fade,   { toValue: 1, duration: 500, useNativeDriver: true }),
+      Animated.timing(slideY, { toValue: 0, duration: 500, useNativeDriver: true }),
+      Animated.spring(scaleStats, { toValue: 1, tension: 60, friction: 8, useNativeDriver: true }),
     ]).start();
 
     (async () => {
@@ -66,139 +77,175 @@ export default function HomeScreen({ usuario, empresa, onSair, onAbrirMenu, onAb
       setOsAbertas(ordens.filter((o) => o.status === 'Aberta' || o.status === 'Em Andamento').length);
       setTotalClientes((cls ?? []).length);
       setAgendadas(ordens.filter((o) => o.dataAgendada && o.dataAgendada >= hoje).length);
-      setRecentes([...ordens].reverse().slice(0, 3));
+      setRecentes([...ordens].reverse().slice(0, 4));
     })();
   }, []);
 
   const primeiroNome = usuario.split(' ')[0];
 
+  function handleMenu(id: string) {
+    if (id === 'configuracoes') onAbrirConfiguracoes();
+    else onAbrirMenu(id);
+  }
+
   return (
     <View style={styles.container}>
-      {/* Gradiente sutil de fundo no topo */}
-      <LinearGradient
-        colors={[tema.primario + '28', tema.fundo + '00'] as any}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
+      <ScrollView showsVerticalScrollIndicator={false} bounces>
 
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-      >
-        <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+        {/* HERO */}
+        <View style={styles.hero}>
+          <LinearGradient
+            colors={[tema.primario, tema.primario + 'cc', tema.fundo + '00'] as any}
+            start={{ x: 0.1, y: 0 }}
+            end={{ x: 0.9, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={[styles.heroCirculo,  { backgroundColor: '#ffffff08' }]} />
+          <View style={[styles.heroCirculo2, { backgroundColor: '#ffffff05' }]} />
 
-          {/* ── Header ── */}
-          <View style={styles.header}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.saudacao}>{saudacao()}</Text>
-              <Text style={styles.nomeUsuario}>{primeiroNome}</Text>
-              <View style={styles.empresaRow}>
-                <View style={[styles.empresaBadge, { backgroundColor: tema.primario + '22', borderColor: tema.primario + '44' }]}>
-                  <Ionicons name="business" size={10} color={tema.primario} />
-                  <Text style={[styles.empresaBadgeTexto, { color: tema.primario }]} numberOfLines={1}>
-                    {empresa.nome}
-                  </Text>
-                </View>
+          <Animated.View style={{ opacity: fade, transform: [{ translateY: slideY }] }}>
+            <View style={styles.heroTop}>
+              <View style={styles.heroSaudacaoBox}>
+                <View style={styles.heroPonto} />
+                <Text style={styles.heroSaudacao}>{saudacao()}</Text>
+              </View>
+              <View style={styles.heroAcoes}>
+                <TouchableOpacity style={styles.heroBtn} onPress={onAbrirConfiguracoes} activeOpacity={0.75}>
+                  <Ionicons name="settings-outline" size={18} color="rgba(255,255,255,0.9)" />
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.heroBtn, styles.heroBtnSair]} onPress={onSair} activeOpacity={0.75}>
+                  <Ionicons name="log-out-outline" size={18} color="#fca5a5" />
+                </TouchableOpacity>
               </View>
             </View>
-            <View style={styles.headerAcoes}>
-              <TouchableOpacity
-                style={[styles.headerBtn, { backgroundColor: tema.card, borderColor: tema.borda }]}
-                onPress={onAbrirConfiguracoes}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="settings-outline" size={19} color={tema.textoSec} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.headerBtn, styles.sairBtn]}
-                onPress={onSair}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="log-out-outline" size={19} color="#f87171" />
-              </TouchableOpacity>
-            </View>
-          </View>
 
-          {/* ── Stats ── */}
-          <View style={styles.statsRow}>
-            {[
-              { label: 'OS Abertas',  valor: osAbertas,     icone: 'document-text-outline', cor: tema.primario },
-              { label: 'Clientes',    valor: totalClientes,  icone: 'people-outline',         cor: '#16a34a'    },
-              { label: 'Agendadas',   valor: agendadas,      icone: 'calendar-outline',       cor: '#d97706'    },
-            ].map((s) => (
-              <View key={s.label} style={[styles.statCard, { backgroundColor: tema.card, borderColor: tema.borda }]}>
-                <View style={[styles.statFaixa, { backgroundColor: s.cor }]} />
-                <View style={styles.statBody}>
-                  <Text style={[styles.statNum, { color: s.cor }]}>{s.valor}</Text>
-                  <Text style={[styles.statLabel, { color: tema.textoMuted }]}>{s.label}</Text>
+            <Text style={styles.heroNome}>{primeiroNome}</Text>
+
+            <View style={styles.heroEmpresaRow}>
+              <View style={styles.heroEmpresaBadge}>
+                <Ionicons name="business" size={11} color="rgba(255,255,255,0.7)" />
+                <Text style={styles.heroEmpresaTexto} numberOfLines={1}>{empresa.nome}</Text>
+              </View>
+              {empresa.segmento ? (
+                <View style={[styles.heroEmpresaBadge, { backgroundColor: 'rgba(255,255,255,0.08)' }]}>
+                  <Text style={styles.heroEmpresaTexto}>{empresa.segmento}</Text>
                 </View>
+              ) : null}
+            </View>
+          </Animated.View>
+
+          <Animated.View style={[styles.statsRow, { transform: [{ scale: scaleStats }] }]}>
+            {[
+              { label: 'Em Aberto', valor: osAbertas,    icone: 'document-text', fundo: 'rgba(255,255,255,0.12)', cor: '#ffffff' },
+              { label: 'Clientes',  valor: totalClientes, icone: 'people',        fundo: 'rgba(255,255,255,0.12)', cor: '#ffffff' },
+              { label: 'Agendadas', valor: agendadas,     icone: 'calendar',      fundo: 'rgba(251,191,36,0.18)',  cor: '#fbbf24' },
+            ].map((s) => (
+              <View key={s.label} style={[styles.statCard, { backgroundColor: s.fundo }]}>
+                <View style={styles.statTop}>
+                  <Ionicons name={s.icone as any} size={11} color={s.cor} style={{ opacity: 0.75 }} />
+                  <Text style={[styles.statLabel, { color: s.cor }]}>{s.label}</Text>
+                </View>
+                <Text style={[styles.statNum, { color: s.cor }]}>{s.valor}</Text>
               </View>
             ))}
-          </View>
+          </Animated.View>
+        </View>
 
-          {/* ── Acesso Rápido ── */}
+        <Animated.View style={[styles.corpo, { opacity: fade, transform: [{ translateY: slideY }] }]}>
+
           <View style={styles.secaoHeader}>
             <Text style={[styles.secaoTitulo, { color: tema.texto }]}>Acesso Rápido</Text>
+            <View style={[styles.secaoLinha, { backgroundColor: tema.borda }]} />
           </View>
+
           <View style={styles.grid}>
             {MENU.map((item) => (
               <TouchableOpacity
                 key={item.id}
-                style={[styles.menuCard, { backgroundColor: tema.card, borderColor: tema.borda }]}
-                onPress={() => onAbrirMenu(item.id)}
-                activeOpacity={0.75}
+                style={[styles.gridCard, { backgroundColor: tema.card, borderColor: tema.borda }]}
+                onPress={() => handleMenu(item.id)}
+                activeOpacity={0.8}
               >
-                <View style={[styles.menuIconeBox, { backgroundColor: item.cor + '1a' }]}>
-                  <Ionicons name={item.icone as any} size={22} color={item.cor} />
+                <LinearGradient
+                  colors={[...item.gradiente] as any}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.gridCardTopo}
+                >
+                  <View style={styles.gridCirculo} />
+                  <Ionicons name={item.icone as any} size={28} color="#ffffff" />
+                </LinearGradient>
+                <View style={styles.gridCardRodape}>
+                  <Text style={[styles.gridCardTitulo, { color: tema.texto }]}>{item.titulo}</Text>
+                  <View style={[styles.gridArrow, { backgroundColor: tema.fundo }]}>
+                    <Ionicons name="arrow-forward" size={10} color={tema.textoFraco} />
+                  </View>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.menuTitulo, { color: tema.texto }]}>{item.titulo}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={15} color={tema.textoFraco} />
               </TouchableOpacity>
             ))}
           </View>
 
-          {/* ── Últimas Ordens ── */}
-          {recentes.length > 0 && (
-            <View>
-              <View style={styles.secaoHeader}>
-                <Text style={[styles.secaoTitulo, { color: tema.texto }]}>Últimas Ordens</Text>
+          <View style={[styles.secaoHeader, { marginTop: 6 }]}>
+            <Text style={[styles.secaoTitulo, { color: tema.texto }]}>Atividade Recente</Text>
+            <View style={[styles.secaoLinha, { backgroundColor: tema.borda }]} />
+          </View>
+
+          {recentes.length === 0 ? (
+            <View style={[styles.vazio, { backgroundColor: tema.card, borderColor: tema.borda }]}>
+              <LinearGradient
+                colors={[tema.primario + '18', tema.primario + '04'] as any}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={[styles.vazioIconeBox, { backgroundColor: tema.primario + '20' }]}>
+                <Ionicons name="document-text-outline" size={26} color={tema.primario} />
               </View>
-              {recentes.map((os) => {
+              <Text style={[styles.vazioTitulo, { color: tema.texto }]}>Nenhuma OS ainda</Text>
+              <Text style={[styles.vazioSub, { color: tema.textoMuted }]}>
+                Crie sua primeira Ordem de Serviço para começar
+              </Text>
+              <TouchableOpacity
+                style={[styles.vazioBtn, { backgroundColor: tema.primario }]}
+                onPress={() => onAbrirMenu('os')}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="add" size={15} color="#fff" />
+                <Text style={styles.vazioBtnTexto}>Nova OS</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={[styles.atividadeCard, { backgroundColor: tema.card, borderColor: tema.borda }]}>
+              {recentes.map((os, idx) => {
                 const cor = CORES_STATUS[os.status] ?? '#64748b';
                 return (
-                  <View key={os.id} style={[styles.osCard, { backgroundColor: tema.card, borderColor: tema.borda }]}>
-                    <View style={[styles.osStatusBarra, { backgroundColor: cor }]} />
-                    <View style={styles.osCorpo}>
-                      <View style={styles.osTopRow}>
-                        <Text style={[styles.osCliente, { color: tema.texto }]} numberOfLines={1}>
+                  <TouchableOpacity
+                    key={os.id}
+                    style={[
+                      styles.atividadeItem,
+                      idx < recentes.length - 1 && { borderBottomWidth: 1, borderBottomColor: tema.borda },
+                    ]}
+                    onPress={() => onAbrirMenu('os')}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.atividadeDot, { backgroundColor: cor }]} />
+                    <View style={{ flex: 1 }}>
+                      <View style={styles.atividadeTopRow}>
+                        <Text style={[styles.atividadeCliente, { color: tema.texto }]} numberOfLines={1}>
                           {os.cliente}
                         </Text>
-                        <View style={[styles.osBadge, { backgroundColor: cor + '22' }]}>
-                          <Text style={[styles.osBadgeTexto, { color: cor }]}>{os.status}</Text>
+                        <View style={[styles.statusPill, { backgroundColor: cor + '20', borderColor: cor + '55' }]}>
+                          <Text style={[styles.statusPillTexto, { color: cor }]}>{os.status}</Text>
                         </View>
                       </View>
-                      <Text style={[styles.osDetalhe, { color: tema.textoSec }]} numberOfLines={1}>
+                      <Text style={[styles.atividadeDetalhe, { color: tema.textoSec }]} numberOfLines={1}>
                         {os.motor}  ·  {os.tipoManutencao}
                       </Text>
-                      <Text style={[styles.osData, { color: tema.textoFraco }]}>{os.dataCriacao}</Text>
+                      <Text style={[styles.atividadeData, { color: tema.textoFraco }]}>{os.dataCriacao}</Text>
                     </View>
-                  </View>
+                    <Ionicons name="chevron-forward" size={14} color={tema.textoFraco} style={{ marginLeft: 6 }} />
+                  </TouchableOpacity>
                 );
               })}
-            </View>
-          )}
-
-          {recentes.length === 0 && (
-            <View style={[styles.emptyOS, { backgroundColor: tema.card, borderColor: tema.borda }]}>
-              <Ionicons name="document-text-outline" size={32} color={tema.textoFraco} />
-              <Text style={[styles.emptyOSTitulo, { color: tema.textoSec }]}>Nenhuma OS ainda</Text>
-              <Text style={[styles.emptyOSSub, { color: tema.textoFraco }]}>
-                Toque em Ordens de Serviço para criar a primeira.
-              </Text>
             </View>
           )}
 
@@ -211,65 +258,76 @@ export default function HomeScreen({ usuario, empresa, onSair, onAbrirMenu, onAb
 function criarEstilos(t: AppTema) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: t.fundo },
-    scroll: { paddingHorizontal: 20, paddingTop: 60, paddingBottom: 48 },
 
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 },
-    saudacao: { color: t.textoMuted, fontSize: 13, fontWeight: '500' },
-    nomeUsuario: { color: t.texto, fontSize: 30, fontWeight: '800', letterSpacing: -0.8, marginTop: 1 },
-    empresaRow: { flexDirection: 'row', marginTop: 6 },
-    empresaBadge: {
-      flexDirection: 'row', alignItems: 'center', gap: 5,
-      paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, borderWidth: 1, maxWidth: 220,
-    },
-    empresaBadgeTexto: { fontSize: 11, fontWeight: '600' },
-    headerAcoes: { flexDirection: 'row', gap: 8, paddingTop: 4 },
-    headerBtn: {
-      width: 40, height: 40, borderRadius: 12, borderWidth: 1,
+    hero: { paddingTop: 56, paddingHorizontal: 20, paddingBottom: 20, overflow: 'hidden' },
+    heroCirculo:  { position: 'absolute', width: 300, height: 300, borderRadius: 150, top: -80,  right: -60 },
+    heroCirculo2: { position: 'absolute', width: 180, height: 180, borderRadius: 90,  bottom: 40, left: -50 },
+    heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+    heroSaudacaoBox: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+    heroPonto: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#4ade80' },
+    heroSaudacao: { color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '500' },
+    heroAcoes: { flexDirection: 'row', gap: 8 },
+    heroBtn: {
+      width: 36, height: 36, borderRadius: 11,
+      backgroundColor: 'rgba(255,255,255,0.12)',
       alignItems: 'center', justifyContent: 'center',
     },
-    sairBtn: { backgroundColor: '#f8717110', borderColor: '#f8717133' },
-
-    statsRow: { flexDirection: 'row', gap: 10, marginBottom: 32 },
-    statCard: {
-      flex: 1, borderRadius: 14, borderWidth: 1, overflow: 'hidden',
+    heroBtnSair: { backgroundColor: 'rgba(239,68,68,0.15)' },
+    heroNome: { color: '#ffffff', fontSize: 36, fontWeight: '800', letterSpacing: -1, marginBottom: 10 },
+    heroEmpresaRow: { flexDirection: 'row', gap: 7, marginBottom: 24 },
+    heroEmpresaBadge: {
+      flexDirection: 'row', alignItems: 'center', gap: 5,
+      backgroundColor: 'rgba(255,255,255,0.12)',
+      paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20,
     },
-    statFaixa: { height: 3 },
-    statBody: { padding: 14 },
-    statNum: { fontSize: 26, fontWeight: '800', letterSpacing: -0.5 },
-    statLabel: { fontSize: 10, fontWeight: '600', marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.3 },
+    heroEmpresaTexto: { color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: '600' },
 
-    secaoHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 13 },
-    secaoTitulo: { fontSize: 16, fontWeight: '700', letterSpacing: -0.3 },
+    statsRow: { flexDirection: 'row', gap: 8 },
+    statCard: { flex: 1, borderRadius: 14, padding: 12 },
+    statTop: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 6 },
+    statLabel: { fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3 },
+    statNum: { fontSize: 26, fontWeight: '800', letterSpacing: -1, lineHeight: 28 },
 
-    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 32 },
-    menuCard: {
-      width: '48%', borderRadius: 14, padding: 14, borderWidth: 1,
-      flexDirection: 'row', alignItems: 'center', gap: 11,
-    },
-    menuIconeBox: {
-      width: 38, height: 38, borderRadius: 10,
-      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-    },
-    menuTitulo: { fontSize: 12, fontWeight: '600', lineHeight: 17 },
+    corpo: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 48 },
+    secaoHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
+    secaoTitulo: { fontSize: 15, fontWeight: '800', letterSpacing: -0.3, flexShrink: 0 },
+    secaoLinha: { flex: 1, height: 1 },
 
-    osCard: {
-      flexDirection: 'row', borderRadius: 13, borderWidth: 1,
-      marginBottom: 10, overflow: 'hidden',
+    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 32 },
+    gridCard: { width: CARD_W, borderRadius: 18, borderWidth: 1, overflow: 'hidden' },
+    gridCardTopo: { height: 90, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+    gridCirculo: {
+      position: 'absolute', width: 100, height: 100, borderRadius: 50,
+      backgroundColor: 'rgba(255,255,255,0.08)', top: -30, right: -25,
     },
-    osStatusBarra: { width: 3 },
-    osCorpo: { flex: 1, padding: 13 },
-    osTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 },
-    osCliente: { fontSize: 14, fontWeight: '700', flex: 1 },
-    osBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, marginLeft: 8 },
-    osBadgeTexto: { fontSize: 10, fontWeight: '700' },
-    osDetalhe: { fontSize: 12, marginBottom: 4 },
-    osData: { fontSize: 11 },
+    gridCardRodape: {
+      flexDirection: 'row', alignItems: 'center',
+      paddingHorizontal: 13, paddingVertical: 11, gap: 6,
+    },
+    gridCardTitulo: { flex: 1, fontSize: 12, fontWeight: '700', lineHeight: 16 },
+    gridArrow: { width: 22, height: 22, borderRadius: 7, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
 
-    emptyOS: {
-      alignItems: 'center', padding: 28, borderRadius: 14, borderWidth: 1,
-      borderStyle: 'dashed', gap: 8,
+    atividadeCard: { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+    atividadeItem: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
+    atividadeDot: { width: 3, borderRadius: 2, alignSelf: 'stretch', minHeight: 44, flexShrink: 0 },
+    atividadeTopRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 },
+    atividadeCliente: { flex: 1, fontSize: 14, fontWeight: '700' },
+    statusPill: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, borderWidth: 1 },
+    statusPillTexto: { fontSize: 9, fontWeight: '700', letterSpacing: 0.2 },
+    atividadeDetalhe: { fontSize: 12, marginBottom: 2 },
+    atividadeData: { fontSize: 10 },
+
+    vazio: {
+      borderRadius: 18, borderWidth: 1, borderStyle: 'dashed',
+      overflow: 'hidden', padding: 28, alignItems: 'center', gap: 8,
     },
-    emptyOSTitulo: { fontSize: 15, fontWeight: '600' },
-    emptyOSSub: { fontSize: 12, textAlign: 'center', lineHeight: 18 },
+    vazioIconeBox: { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+    vazioTitulo: { fontSize: 16, fontWeight: '700' },
+    vazioSub: { fontSize: 13, textAlign: 'center', lineHeight: 19 },
+    vazioBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      paddingHorizontal: 18, paddingVertical: 10, borderRadius: 12, marginTop: 8,
+    },
+    vazioBtnTexto: { color: '#fff', fontSize: 13, fontWeight: '700' },
   });
 }
