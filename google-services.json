@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1057877143077",
+    "project_id": "servios-app",
+    "storage_bucket": "servios-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1057877143077:android:d7c35490cb98a10a9a59cc",
+        "android_client_info": {
+          "package_name": "com.trentini.servios"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAu5sFetZa5LHC0X84VaZslzo1eZlpC7aw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
