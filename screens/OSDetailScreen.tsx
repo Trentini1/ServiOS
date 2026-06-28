@@ -8,7 +8,7 @@ import {
   ScrollView,
   Image,
 } from 'react-native';
-import { Ionicons } from '@=expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { carregar, salvar } from '../utils/storage';
 import type { OrdemServico } from './OSListScreen';
 import SignatureModal from '../components/SignatureModal';
@@ -18,6 +18,7 @@ type Props = {
   osId: string;
   onVoltar: () => void;
   onAlterado: () => void;
+  onEditarOS?: () => void;
 };
 
 const STATUS_OPCOES: OrdemServico['status'][] = ['Aberta', 'Em Andamento', 'Concluída'];
@@ -187,7 +188,9 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
               </TouchableOpacity>
             ))}
           </View>
-          <View style={styles.card}>
+        </View>
+
+        <View style={styles.card}>
           <Text style={styles.secaoTitulo}>Assinaturas</Text>
 
           <View style={styles.assinaturaLinha}>
@@ -244,11 +247,7 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
           if (modalAssinatura) salvarAssinatura(modalAssinatura, base64);
         }}
       />
-        </View>
-      </ScrollView>
     </View>
-    
-    
   );
 }
 
@@ -374,5 +373,37 @@ const styles = StyleSheet.create({
   },
   statusChipTextoAtivo: {
     color: '#ffffff',
+  },
+  assinaturaLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  assinaturaLabel: {
+    color: '#94a3b8',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  assinaturaImagem: {
+    width: 160,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: '#0b1220',
+  },
+  assinaturaBotao: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#2563eb22',
+    borderWidth: 1,
+    borderColor: '#2563eb55',
+  },
+  assinaturaBotaoTexto: {
+    color: '#2563eb',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

@@ -31,7 +31,7 @@ type Empresa = {
   email?: string; endereco?: string;
 };
 
-type Usuario = { nome: string; email: string; senha: string };
+type Usuario = { nome: string; email: string; senha?: string };
 
 type Tela =
   | 'home' | 'os-lista' | 'os-form' | 'os-detalhe' | 'os-editar'

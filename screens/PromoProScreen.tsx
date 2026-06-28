@@ -301,5 +301,5 @@ const styles = StyleSheet.create({
   },
   assinarTexto: { color: '#ffffff', fontSize: 16, fontWeight: '800' },
   continuarBtn:  { paddingVertical: 8 },
-  continuarTexto: { color: 'rgba(255,255,255,0.35)', fontSize: 13, textDecoration: 'underline' as any },
+  continuarTexto: { color: 'rgba(255,255,255,0.35)', fontSize: 13, textDecorationLine: 'underline' },
 });
