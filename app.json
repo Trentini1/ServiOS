@@ -72,7 +72,8 @@
             "useFrameworks": "static"
           }
         }
-      ]
+      ],
+      "./plugins/withFirebaseFix"
     ],
     "extra": {
       "eas": {
