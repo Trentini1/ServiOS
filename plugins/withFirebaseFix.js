@@ -6,15 +6,14 @@ const path = require('path');
  * Fixes React Native Firebase v24 compilation with use_frameworks! :linkage => :static
  * on Xcode 15+/26+.
  *
- * Problem: RNFB pods include React Core headers (e.g. RCTBridgeModule.h) which, when
- * RNFB is built as a Clang framework module, causes those types to be "absorbed" into
- * the RNFB module space. Downstream RNFB pods (RNFBFirestore etc.) then fail with
- * "must be imported from module 'RNFBApp.RNFBAppModule'" because Clang sees the type
- * in the wrong module.
- *
- * Fix: Allow non-modular includes globally + disable DEFINES_MODULE for RNFB pods so
- * they don't create their own Clang module scope, leaving React Core types in the
- * React-Core module where they belong.
+ * Strategy:
+ * 1. CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES=YES globally — allows pods to
+ *    include React Core headers (e.g. RCTBridgeModule.h) without Clang errors.
+ * 2. DEFINES_MODULE=NO specifically for RNFBApp — this ObjC-only pod includes React Core
+ *    headers and when built as a Clang module it "absorbs" those types, causing downstream
+ *    pods like RNFBFirestore to fail with "must be imported from module RNFBApp.X". By
+ *    disabling the module for RNFBApp only (it has no Swift code so no bridging issues),
+ *    React Core types stay in their own module space.
  */
 const withFirebaseFix = (config) =>
   withDangerousMod(config, [
@@ -31,7 +30,7 @@ const withFirebaseFix = (config) =>
   installer.pods_project.targets.each do |target|
     target.build_configurations.each do |config|
       config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
-      if target.name.start_with?('RNFB')
+      if target.name == 'RNFBApp'
         config.build_settings['DEFINES_MODULE'] = 'NO'
       end
     end
