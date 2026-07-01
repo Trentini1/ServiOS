@@ -75,6 +75,15 @@
       ],
       "./plugins/withFirebaseFix"
     ],
+    "updates": {
+      "url": "https://u.expo.dev/d40abe15-8e7d-4b43-9206-966d1d49d63a",
+      "enabled": true,
+      "fallbackToCacheTimeout": 0,
+      "checkAutomatically": "ON_LOAD"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "extra": {
       "eas": {
         "projectId": "d40abe15-8e7d-4b43-9206-966d1d49d63a"

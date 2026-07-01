@@ -7,12 +7,20 @@ import {
   Alert,
   ScrollView,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { carregar, salvar } from '../utils/storage';
+import { carregar, salvar } from '../utils/cloudStorage';
 import type { OrdemServico } from './OSListScreen';
 import SignatureModal from '../components/SignatureModal';
 import { gerarESalvarPdfOS } from '../utils/gerarPdfOS';
+import { PDF_TEMA_PADRAO } from '../utils/temas';
+import type { PdfTema } from '../utils/temas';
+
+type Empresa = {
+  nome: string; cnpj?: string; telefone?: string; email?: string;
+  endereco?: string; cidade?: string; estado?: string; segmento?: string;
+};
 
 type Props = {
   osId: string;
@@ -29,9 +37,10 @@ const CORES_STATUS: Record<string, string> = {
   Concluída: '#16a34a',
 };
 
-export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
-  const [ordem, setOrdem] = useState<OrdemServico | null>(null);
+export default function OSDetailScreen({ osId, onVoltar, onAlterado, onEditarOS }: Props) {
+  const [ordem, setOrdem]               = useState<OrdemServico | null>(null);
   const [modalAssinatura, setModalAssinatura] = useState<'tecnico' | 'cliente' | null>(null);
+  const [exportando, setExportando]     = useState(false);
 
   const carregarOrdem = useCallback(async () => {
     const lista = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
@@ -64,6 +73,26 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
     await salvar('ordensServico', novaLista);
     setOrdem({ ...ordem, [campo]: base64 });
     onAlterado();
+  }
+
+  async function exportarPDF() {
+    if (!ordem) return;
+    setExportando(true);
+    try {
+      const empresa  = await carregar<Empresa>('empresa');
+      const pdfTema  = (await carregar<PdfTema>('pdfTema')) ?? PDF_TEMA_PADRAO;
+      const logo     = await carregar<string>('logoEmpresa');
+      await gerarESalvarPdfOS(
+        ordem,
+        empresa ?? { nome: 'Empresa' },
+        pdfTema,
+        logo ?? undefined,
+      );
+    } catch {
+      Alert.alert('Erro', 'Não foi possível gerar o PDF.');
+    } finally {
+      setExportando(false);
+    }
   }
 
   function confirmarExclusao() {
@@ -108,9 +137,16 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
           <Ionicons name="arrow-back" size={22} color="#ffffff" />
         </TouchableOpacity>
         <Text style={styles.titulo}>Detalhes da OS</Text>
-        <TouchableOpacity onPress={confirmarExclusao} style={styles.excluirBotao}>
-          <Ionicons name="trash-outline" size={20} color="#f87171" />
-        </TouchableOpacity>
+        <View style={styles.headerAcoes}>
+          {onEditarOS && (
+            <TouchableOpacity onPress={onEditarOS} style={styles.editarBotao}>
+              <Ionicons name="create-outline" size={19} color="#2563eb" />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity onPress={confirmarExclusao} style={styles.excluirBotao}>
+            <Ionicons name="trash-outline" size={19} color="#f87171" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -138,11 +174,15 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
           </View>
           <Text style={styles.infoValor}>{ordem.motor}</Text>
 
-          <View style={[styles.infoLinha, { marginTop: 14 }]}>
-            <Ionicons name="locate-outline" size={16} color="#64748b" />
-            <Text style={styles.infoLabel}>Posição</Text>
-          </View>
-          <Text style={styles.infoValor}>{ordem.posicao}</Text>
+          {!!ordem.posicao && (
+            <>
+              <View style={[styles.infoLinha, { marginTop: 14 }]}>
+                <Ionicons name="locate-outline" size={16} color="#64748b" />
+                <Text style={styles.infoLabel}>Posição</Text>
+              </View>
+              <Text style={styles.infoValor}>{ordem.posicao}</Text>
+            </>
+          )}
 
           <View style={[styles.infoLinha, { marginTop: 14 }]}>
             <Ionicons name="construct-outline" size={16} color="#64748b" />
@@ -157,6 +197,28 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
                 <Text style={styles.infoLabel}>Descrição</Text>
               </View>
               <Text style={styles.infoValor}>{ordem.descricao}</Text>
+            </>
+          )}
+
+          {!!(ordem as any).tecnicoResponsavel && (
+            <>
+              <View style={[styles.infoLinha, { marginTop: 14 }]}>
+                <Ionicons name="person-outline" size={16} color="#64748b" />
+                <Text style={styles.infoLabel}>Técnico</Text>
+              </View>
+              <Text style={styles.infoValor}>{(ordem as any).tecnicoResponsavel}</Text>
+            </>
+          )}
+
+          {!!ordem.dataAgendada && (
+            <>
+              <View style={[styles.infoLinha, { marginTop: 14 }]}>
+                <Ionicons name="calendar-outline" size={16} color="#64748b" />
+                <Text style={styles.infoLabel}>Data agendada</Text>
+              </View>
+              <Text style={styles.infoValor}>
+                {ordem.dataAgendada.split('-').reverse().join('/')}
+              </Text>
             </>
           )}
         </View>
@@ -237,6 +299,24 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado }: Props) {
             )}
           </View>
         </View>
+
+        {/* Botão Exportar PDF */}
+        <TouchableOpacity
+          style={[styles.pdfBtn, exportando && { opacity: 0.6 }]}
+          onPress={exportarPDF}
+          disabled={exportando}
+          activeOpacity={0.85}
+        >
+          {exportando ? (
+            <ActivityIndicator size="small" color="#ffffff" />
+          ) : (
+            <Ionicons name="document-text-outline" size={20} color="#ffffff" />
+          )}
+          <Text style={styles.pdfBtnTexto}>
+            {exportando ? 'Gerando PDF...' : 'Exportar PDF'}
+          </Text>
+        </TouchableOpacity>
+
       </ScrollView>
 
       <SignatureModal
@@ -271,6 +351,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#111827',
     borderWidth: 1,
     borderColor: '#1f2937',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerAcoes: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  editarBotao: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#2563eb22',
+    borderWidth: 1,
+    borderColor: '#2563eb55',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -405,5 +499,25 @@ const styles = StyleSheet.create({
     color: '#2563eb',
     fontSize: 13,
     fontWeight: '600',
+  },
+  pdfBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#16a34a',
+    borderRadius: 16,
+    paddingVertical: 16,
+    marginTop: 4,
+    shadowColor: '#16a34a',
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
+  },
+  pdfBtnTexto: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
