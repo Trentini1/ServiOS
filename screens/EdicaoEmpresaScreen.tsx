@@ -3,11 +3,11 @@ import {
   View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { carregar, salvar } from '../utils/cloudStorage';
+import { carregarEmpresa, salvarEmpresa } from '../utils/cloudStorage';
 import { useThema } from '../contexts/ThemeContext';
 import { AppTema } from '../utils/temas';
 
-type Props = { onVoltar: () => void };
+type Props = { uid: string; onVoltar: () => void };
 
 type Empresa = {
   nome: string;
@@ -20,7 +20,7 @@ type Empresa = {
   endereco?: string;
 };
 
-export default function EdicaoEmpresaScreen({ onVoltar }: Props) {
+export default function EdicaoEmpresaScreen({ uid, onVoltar }: Props) {
   const tema = useThema();
   const styles = useMemo(() => criarEstilos(tema), [tema]);
 
@@ -31,13 +31,13 @@ export default function EdicaoEmpresaScreen({ onVoltar }: Props) {
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
-    carregar<Empresa>('empresa').then((e) => {
+    carregarEmpresa(uid).then((e) => {
       if (e) {
         setEmpresaBase(e);
         setForm({ nome: e.nome, cnpj: e.cnpj ?? '', telefone: e.telefone ?? '', email: e.email ?? '', endereco: e.endereco ?? '' });
       }
     });
-  }, []);
+  }, [uid]);
 
   function atualizar(campo: keyof Empresa, valor: string) {
     setForm((p) => ({ ...p, [campo]: valor }));
@@ -49,7 +49,7 @@ export default function EdicaoEmpresaScreen({ onVoltar }: Props) {
       return;
     }
     setSalvando(true);
-    await salvar('empresa', { ...empresaBase, ...form });
+    await salvarEmpresa(uid, { ...empresaBase, ...form });
     setSalvando(false);
     Alert.alert('Salvo!', 'Dados da empresa atualizados com sucesso.', [
       { text: 'OK', onPress: onVoltar },

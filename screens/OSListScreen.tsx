@@ -1,10 +1,10 @@
 ﻿import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList, RefreshControl,
-  ScrollView, TextInput, Modal,
+  ScrollView, TextInput, Modal, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { carregar } from '../utils/cloudStorage';
+import { carregar, listarOS } from '../utils/cloudStorage';
 import { useThema } from '../contexts/ThemeContext';
 import { AppTema } from '../utils/temas';
 import type { Tecnico } from './TecnicosListScreen';
@@ -53,6 +53,7 @@ export type OrdemServico = {
 };
 
 type Props = {
+  uid: string;
   onVoltar: () => void;
   onNovaOS: () => void;
   onAbrirOS: (id: string) => void;
@@ -73,7 +74,7 @@ function parseDateBR(br: string): Date | null {
   return new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0]));
 }
 
-export default function OSListScreen({ onVoltar, onNovaOS, onAbrirOS }: Props) {
+export default function OSListScreen({ uid, onVoltar, onNovaOS, onAbrirOS }: Props) {
   const tema = useThema();
   const styles = useMemo(() => criarEstilos(tema), [tema]);
 
@@ -84,18 +85,19 @@ export default function OSListScreen({ onVoltar, onNovaOS, onAbrirOS }: Props) {
   const [tecnicoFiltro, setTecnicoFiltro] = useState<string>('');
   const [dataFiltro, setDataFiltro] = useState<'todas' | 'hoje' | 'semana' | 'mes'>('todas');
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
+  const [carregando, setCarregando] = useState(true);
   const [recarregando, setRecarregando] = useState(false);
 
   const carregar_ = useCallback(async () => {
     const [os, tecs] = await Promise.all([
-      carregar<OrdemServico[]>('ordensServico'),
+      listarOS(uid),
       carregar<Tecnico[]>('tecnicos'),
     ]);
-    setOrdens(os ?? []);
+    setOrdens(os);
     setTecnicos(tecs ?? []);
-  }, []);
+  }, [uid]);
 
-  useEffect(() => { carregar_(); }, [carregar_]);
+  useEffect(() => { carregar_().then(() => setCarregando(false)); }, [carregar_]);
 
   async function recarregar() {
     setRecarregando(true);
@@ -164,6 +166,14 @@ export default function OSListScreen({ onVoltar, onNovaOS, onAbrirOS }: Props) {
     setTecnicoFiltro('');
     setDataFiltro('todas');
     setMostrarFiltros(false);
+  }
+
+  if (carregando) {
+    return (
+      <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={tema.primario} />
+      </View>
+    );
   }
 
   return (

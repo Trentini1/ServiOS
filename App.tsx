@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
 import LoginScreen from './screens/LoginScreen';
 import CompanyRegisterScreen from './screens/CompanyRegisterScreen';
 import HomeScreen from './screens/HomeScreen';
@@ -23,7 +24,11 @@ import CamposOSScreen from './screens/CamposOSScreen';
 import LogoEmpresaScreen from './screens/LogoEmpresaScreen';
 import PromoProScreen from './screens/PromoProScreen';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { salvar, carregar, remover } from './utils/cloudStorage';
+import { salvar, carregar, remover, salvarEmpresa, carregarEmpresa } from './utils/cloudStorage';
+
+// Garante que o app continue funcionando (leitura e escrita) sem internet,
+// sincronizando com o Firestore assim que a conexão voltar.
+firestore().settings({ persistence: true });
 
 type Empresa = {
   nome: string; cnpj: string; telefone: string;
@@ -44,6 +49,7 @@ type Tela =
 function AppInner() {
   const [carregandoApp, setCarregandoApp] = useState(true);
   const [usuarioLogado, setUsuarioLogado] = useState<Usuario | null>(null);
+  const [uid, setUid]                     = useState<string>('');
   const [empresa, setEmpresa]             = useState<Empresa | null>(null);
   const [telaAtual, setTelaAtual]         = useState<Tela>('home');
   const [telaAnterior, setTelaAnterior]   = useState<Tela>('home');
@@ -58,12 +64,14 @@ function AppInner() {
       if (firebaseUser) {
         const nome = firebaseUser.displayName ?? firebaseUser.email?.split('@')[0] ?? 'Usuário';
         setUsuarioLogado({ nome, email: firebaseUser.email ?? '', senha: '' });
-        const empresaSalva = await carregar<Empresa>('empresa');
+        setUid(firebaseUser.uid);
+        const empresaSalva = await carregarEmpresa(firebaseUser.uid);
         if (empresaSalva) setEmpresa(empresaSalva);
         const plano = await carregar<string>('plano');
         if (empresaSalva && plano !== 'pro') setMostrarPromo(true);
       } else {
         setUsuarioLogado(null);
+        setUid('');
         setEmpresa(null);
       }
       setCarregandoApp(false);
@@ -83,7 +91,7 @@ function AppInner() {
 
   async function handleEmpresaConcluida(dados: Empresa) {
     setEmpresa(dados);
-    await salvar('empresa', dados);
+    await salvarEmpresa(uid, dados);
   }
 
   async function handleSair() {
@@ -114,6 +122,7 @@ function AppInner() {
   if (telaAtual === 'os-lista') {
     return (
       <OSListScreen
+        uid={uid}
         onVoltar={() => irPara('home')}
         onNovaOS={() => irPara('os-form')}
         onAbrirOS={(id) => { setOsSelecionadaId(id); irPara('os-detalhe'); }}
@@ -124,6 +133,7 @@ function AppInner() {
   if (telaAtual === 'os-form') {
     return (
       <OSFormScreen
+        uid={uid}
         onVoltar={() => { setDataAgendadaOS(undefined); irPara(telaAnterior === 'agenda' ? 'agenda' : 'os-lista'); }}
         onSalvo={() => { setDataAgendadaOS(undefined); irPara(telaAnterior === 'agenda' ? 'agenda' : 'os-lista'); }}
         onIrParaClientes={() => irPara('clientes-form')}
@@ -135,6 +145,7 @@ function AppInner() {
   if (telaAtual === 'os-editar' && osSelecionadaId) {
     return (
       <OSFormScreen
+        uid={uid}
         onVoltar={() => irPara('os-detalhe')}
         onSalvo={() => irPara('os-detalhe')}
         onIrParaClientes={() => irPara('clientes-form')}
@@ -146,6 +157,7 @@ function AppInner() {
   if (telaAtual === 'os-detalhe' && osSelecionadaId) {
     return (
       <OSDetailScreen
+        uid={uid}
         osId={osSelecionadaId}
         onVoltar={() => irPara(telaAnterior === 'agenda' ? 'agenda' : 'os-lista')}
         onAlterado={() => {}}
@@ -157,6 +169,7 @@ function AppInner() {
   if (telaAtual === 'clientes-lista') {
     return (
       <ClientListScreen
+        uid={uid}
         onVoltar={() => irPara('home')}
         onNovoCliente={() => irPara('clientes-form')}
         onEditarCliente={(id) => { setClienteEditandoId(id); irPara('clientes-editar'); }}
@@ -167,6 +180,7 @@ function AppInner() {
   if (telaAtual === 'clientes-form') {
     return (
       <ClientFormScreen
+        uid={uid}
         onVoltar={() => irPara('clientes-lista')}
         onSalvo={() => irPara('clientes-lista')}
       />
@@ -176,6 +190,7 @@ function AppInner() {
   if (telaAtual === 'clientes-editar' && clienteEditandoId) {
     return (
       <ClientFormScreen
+        uid={uid}
         onVoltar={() => { setClienteEditandoId(null); irPara('clientes-lista'); }}
         onSalvo={() => { setClienteEditandoId(null); irPara('clientes-lista'); }}
         clienteId={clienteEditandoId}
@@ -186,13 +201,14 @@ function AppInner() {
   if (telaAtual === 'agenda') {
     return (
       <AgendaScreen
+        uid={uid}
         onVoltar={() => irPara('home')}
         onAbrirOS={(id) => { setOsSelecionadaId(id); irPara('os-detalhe'); }}
       />
     );
   }
 
-  if (telaAtual === 'relatorios') return <RelatoriosScreen onVoltar={() => irPara('home')} />;
+  if (telaAtual === 'relatorios') return <RelatoriosScreen uid={uid} onVoltar={() => irPara('home')} />;
 
   if (telaAtual === 'tecnicos-lista') {
     return (
@@ -234,7 +250,7 @@ function AppInner() {
 
   if (telaAtual === 'tema-app')       return <TemaAppScreen      onVoltar={() => irPara('configuracoes')} />;
   if (telaAtual === 'tema-pdf')       return <TemaPdfScreen      onVoltar={() => irPara('configuracoes')} />;
-  if (telaAtual === 'edicao-empresa') return <EdicaoEmpresaScreen onVoltar={() => irPara('configuracoes')} />;
+  if (telaAtual === 'edicao-empresa') return <EdicaoEmpresaScreen uid={uid} onVoltar={() => irPara('configuracoes')} />;
   if (telaAtual === 'alterar-senha')  return <AlterarSenhaScreen  onVoltar={() => irPara('configuracoes')} />;
   if (telaAtual === 'licenca')   return <LicencaScreen    onVoltar={() => irPara('configuracoes')} />;
   if (telaAtual === 'campos-os')    return <CamposOSScreen    onVoltar={() => irPara('configuracoes')} />;
@@ -243,6 +259,7 @@ function AppInner() {
   return (
     <>
       <HomeScreen
+        uid={uid}
         usuario={usuarioLogado.nome}
         empresa={empresa}
         onSair={handleSair}

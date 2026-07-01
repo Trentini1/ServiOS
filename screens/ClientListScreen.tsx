@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, RefreshControl, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, RefreshControl, TextInput, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { carregar } from '../utils/cloudStorage';
+import { listarClientes } from '../utils/cloudStorage';
 import { useThema } from '../contexts/ThemeContext';
 import { AppTema } from '../utils/temas';
 
@@ -9,7 +9,7 @@ export type Cliente = {
   id: string; nome: string; cnpjCpf: string; telefone: string; cidade: string; estado: string;
 };
 
-type Props = { onVoltar: () => void; onNovoCliente: () => void; onEditarCliente: (id: string) => void };
+type Props = { uid: string; onVoltar: () => void; onNovoCliente: () => void; onEditarCliente: (id: string) => void };
 
 function iniciais(nome: string): string {
   return nome.split(' ').slice(0, 2).map((p) => p[0]).join('').toUpperCase();
@@ -21,19 +21,20 @@ function corAvatar(id: string): string {
   return CORES_AVATAR[soma % CORES_AVATAR.length];
 }
 
-export default function ClientListScreen({ onVoltar, onNovoCliente, onEditarCliente }: Props) {
+export default function ClientListScreen({ uid, onVoltar, onNovoCliente, onEditarCliente }: Props) {
   const tema = useThema();
   const styles = useMemo(() => criarEstilos(tema), [tema]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [busca, setBusca] = useState('');
+  const [carregando, setCarregando] = useState(true);
   const [recarregando, setRecarregando] = useState(false);
 
   const carregarClientes = useCallback(async () => {
-    const lista = await carregar<Cliente[]>('clientes');
-    setClientes(lista ?? []);
-  }, []);
+    const lista = await listarClientes(uid);
+    setClientes(lista);
+  }, [uid]);
 
-  useEffect(() => { carregarClientes(); }, [carregarClientes]);
+  useEffect(() => { carregarClientes().then(() => setCarregando(false)); }, [carregarClientes]);
 
   async function recarregar() {
     setRecarregando(true);
@@ -51,6 +52,14 @@ export default function ClientListScreen({ onVoltar, onNovoCliente, onEditarClie
       c.cnpjCpf.includes(q)
     );
   }, [clientes, busca]);
+
+  if (carregando) {
+    return (
+      <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={tema.primario} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

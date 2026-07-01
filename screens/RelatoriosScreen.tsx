@@ -8,15 +8,17 @@ import {
   RefreshControl,
   Share,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { carregar } from '../utils/cloudStorage';
+import { listarOS, listarClientes } from '../utils/cloudStorage';
 import type { OrdemServico } from './OSListScreen';
 import type { Cliente } from './ClientListScreen';
 import { useThema } from '../contexts/ThemeContext';
 import { AppTema } from '../utils/temas';
 
 type Props = {
+  uid: string;
   onVoltar: () => void;
 };
 
@@ -69,24 +71,25 @@ const barraStyles = StyleSheet.create({
   pct: { fontSize: 11, fontWeight: '700', minWidth: 32, textAlign: 'right' },
 });
 
-export default function RelatoriosScreen({ onVoltar }: Props) {
+export default function RelatoriosScreen({ uid, onVoltar }: Props) {
   const tema = useThema();
   const styles = useMemo(() => criarEstilos(tema), [tema]);
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [filtro, setFiltro] = useState<Filtro>('Este mês');
+  const [carregando, setCarregando] = useState(true);
   const [recarregando, setRecarregando] = useState(false);
 
   const carregar_ = useCallback(async () => {
     const [os, cls] = await Promise.all([
-      carregar<OrdemServico[]>('ordensServico'),
-      carregar<Cliente[]>('clientes'),
+      listarOS(uid),
+      listarClientes(uid),
     ]);
-    setOrdens(os ?? []);
-    setClientes(cls ?? []);
-  }, []);
+    setOrdens(os);
+    setClientes(cls);
+  }, [uid]);
 
-  useEffect(() => { carregar_(); }, [carregar_]);
+  useEffect(() => { carregar_().then(() => setCarregando(false)); }, [carregar_]);
 
   async function recarregar() {
     setRecarregando(true);
@@ -148,6 +151,14 @@ export default function RelatoriosScreen({ onVoltar }: Props) {
     } catch {
       Alert.alert('Erro', 'Não foi possível compartilhar o relatório.');
     }
+  }
+
+  if (carregando) {
+    return (
+      <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={tema.primario} />
+      </View>
+    );
   }
 
   return (

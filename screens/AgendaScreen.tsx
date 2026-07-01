@@ -1,11 +1,11 @@
 ﻿import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList,
-  RefreshControl, Modal, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform,
+  RefreshControl, Modal, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
-import { carregar, salvar } from '../utils/cloudStorage';
+import { carregar, salvar, listarOS } from '../utils/cloudStorage';
 import type { OrdemServico } from './OSListScreen';
 import type { Tecnico } from './TecnicosListScreen';
 import { useThema } from '../contexts/ThemeContext';
@@ -59,6 +59,7 @@ function formatarHorario(v: string): string {
 }
 
 type Props = {
+  uid: string;
   onVoltar: () => void;
   onAbrirOS: (id: string) => void;
 };
@@ -67,7 +68,7 @@ type ItemLista =
   | { tipo: 'os';          os: OrdemServico    }
   | { tipo: 'agendamento'; ag: Agendamento     };
 
-export default function AgendaScreen({ onVoltar, onAbrirOS }: Props) {
+export default function AgendaScreen({ uid, onVoltar, onAbrirOS }: Props) {
   const tema   = useThema();
   const styles = useMemo(() => criarEstilos(tema), [tema]);
   const hoje   = new Date().toISOString().split('T')[0];
@@ -76,6 +77,7 @@ export default function AgendaScreen({ onVoltar, onAbrirOS }: Props) {
   const [ordens, setOrdens]           = useState<OrdemServico[]>([]);
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [tecnicos, setTecnicos]       = useState<Tecnico[]>([]);
+  const [carregando, setCarregando]   = useState(true);
   const [recarregando, setRecarregando] = useState(false);
 
   // Modal novo agendamento
@@ -89,16 +91,16 @@ export default function AgendaScreen({ onVoltar, onAbrirOS }: Props) {
 
   const carregar_ = useCallback(async () => {
     const [os, ags, tecs] = await Promise.all([
-      carregar<OrdemServico[]>('ordensServico'),
+      listarOS(uid),
       carregar<Agendamento[]>('agendamentos'),
       carregar<Tecnico[]>('tecnicos'),
     ]);
-    setOrdens(os ?? []);
+    setOrdens(os);
     setAgendamentos(ags ?? []);
     setTecnicos(tecs ?? []);
-  }, []);
+  }, [uid]);
 
-  useEffect(() => { carregar_(); }, [carregar_]);
+  useEffect(() => { carregar_().then(() => setCarregando(false)); }, [carregar_]);
 
   async function recarregar() {
     setRecarregando(true);
@@ -175,6 +177,14 @@ export default function AgendaScreen({ onVoltar, onAbrirOS }: Props) {
       .map((a): ItemLista => ({ tipo: 'agendamento', ag: a }));
     return [...agDia, ...osDia];
   }, [ordens, agendamentos, dataSelecionada]);
+
+  if (carregando) {
+    return (
+      <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={tema.primario} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

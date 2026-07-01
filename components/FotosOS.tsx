@@ -24,8 +24,8 @@ type Props = {
 async function comprimirImagem(uri: string): Promise<string> {
   const resultado = await ImageManipulator.manipulateAsync(
     uri,
-    [{ resize: { width: 1024 } }],
-    { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+    [{ resize: { width: 800 } }],
+    { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true }
   );
   return `data:image/jpeg;base64,${resultado.base64}`;
 }

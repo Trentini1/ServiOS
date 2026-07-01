@@ -1,11 +1,11 @@
 ﻿import { useRef, useEffect, useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Animated, Dimensions, Image,
+  Animated, Dimensions, Image, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { carregar } from '../utils/cloudStorage';
+import { carregar, listarOS, listarClientes } from '../utils/cloudStorage';
 import { useThema } from '../contexts/ThemeContext';
 import { AppTema } from '../utils/temas';
 import type { OrdemServico } from './OSListScreen';
@@ -20,6 +20,7 @@ type Empresa = {
 };
 
 type Props = {
+  uid: string;
   usuario: string;
   empresa: Empresa;
   onSair: () => void;
@@ -47,7 +48,7 @@ function saudacao(): string {
   return 'Boa noite';
 }
 
-export default function HomeScreen({ usuario, empresa, onSair, onAbrirMenu, onAbrirConfiguracoes }: Props) {
+export default function HomeScreen({ uid, usuario, empresa, onSair, onAbrirMenu, onAbrirConfiguracoes }: Props) {
   const tema   = useThema();
   const styles = useMemo(() => criarEstilos(tema), [tema]);
 
@@ -55,6 +56,7 @@ export default function HomeScreen({ usuario, empresa, onSair, onAbrirMenu, onAb
   const slideY     = useRef(new Animated.Value(30)).current;
   const scaleStats = useRef(new Animated.Value(0.93)).current;
 
+  const [carregando, setCarregando]       = useState(true);
   const [osAbertas, setOsAbertas]         = useState(0);
   const [totalClientes, setTotalClientes] = useState(0);
   const [agendadas, setAgendadas]         = useState(0);
@@ -69,26 +71,34 @@ export default function HomeScreen({ usuario, empresa, onSair, onAbrirMenu, onAb
     ]).start();
 
     (async () => {
-      const [os, cls, logoSalva] = await Promise.all([
-        carregar<OrdemServico[]>('ordensServico'),
-        carregar<Cliente[]>('clientes'),
+      const [ordens, cls, logoSalva] = await Promise.all([
+        listarOS(uid),
+        listarClientes(uid),
         carregar<string>('logoEmpresa'),
       ]);
       setLogo(logoSalva ?? null);
-      const ordens = os ?? [];
-      const hoje   = new Date().toISOString().split('T')[0];
+      const hoje = new Date().toISOString().split('T')[0];
       setOsAbertas(ordens.filter((o) => o.status === 'Aberta' || o.status === 'Em Andamento').length);
-      setTotalClientes((cls ?? []).length);
+      setTotalClientes(cls.length);
       setAgendadas(ordens.filter((o) => o.dataAgendada && o.dataAgendada >= hoje).length);
       setRecentes([...ordens].reverse().slice(0, 4));
+      setCarregando(false);
     })();
-  }, []);
+  }, [uid]);
 
   const primeiroNome = usuario.split(' ')[0];
 
   function handleMenu(id: string) {
     if (id === 'configuracoes') onAbrirConfiguracoes();
     else onAbrirMenu(id);
+  }
+
+  if (carregando) {
+    return (
+      <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={tema.primario} />
+      </View>
+    );
   }
 
   return (

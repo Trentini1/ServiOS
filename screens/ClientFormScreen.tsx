@@ -4,12 +4,12 @@ import {
   KeyboardAvoidingView, Platform, Alert, Animated, ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { carregar, salvar } from '../utils/cloudStorage';
+import { listarClientes, salvarCliente, deletarCliente } from '../utils/cloudStorage';
 import type { Cliente } from './ClientListScreen';
 import { useThema } from '../contexts/ThemeContext';
 import { AppTema } from '../utils/temas';
 
-type Props = { onVoltar: () => void; onSalvo: () => void; clienteId?: string };
+type Props = { uid: string; onVoltar: () => void; onSalvo: () => void; clienteId?: string };
 
 function formatarDocumento(valor: string) {
   const numeros = valor.replace(/\D/g, '').slice(0, 14);
@@ -34,7 +34,7 @@ function formatarTelefone(valor: string) {
   return numeros.replace(/^(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3').trim();
 }
 
-export default function ClientFormScreen({ onVoltar, onSalvo, clienteId }: Props) {
+export default function ClientFormScreen({ uid, onVoltar, onSalvo, clienteId }: Props) {
   const tema = useThema();
   const styles = useMemo(() => criarEstilos(tema), [tema]);
   const modoEdicao = !!clienteId;
@@ -55,7 +55,7 @@ export default function ClientFormScreen({ onVoltar, onSalvo, clienteId }: Props
   useEffect(() => {
     if (modoEdicao) {
       (async () => {
-        const lista = (await carregar<Cliente[]>('clientes')) ?? [];
+        const lista = await listarClientes(uid);
         const cliente = lista.find((c) => c.id === clienteId);
         if (cliente) {
           setNome(cliente.nome);
@@ -86,20 +86,10 @@ export default function ClientFormScreen({ onVoltar, onSalvo, clienteId }: Props
     }
     if (estado.length !== 2) { Alert.alert('Atenção', 'Digite a sigla do estado (ex: PR, SP).'); return; }
     setSalvando(true);
-    const listaAtual = (await carregar<Cliente[]>('clientes')) ?? [];
 
-    if (modoEdicao) {
-      const atualizado = listaAtual.map((c) =>
-        c.id === clienteId
-          ? { ...c, nome, cnpjCpf, telefone, cidade, estado, email, endereco, observacoes } as any
-          : c
-      );
-      await salvar('clientes', atualizado);
-    } else {
-      const novoCliente: any = { id: Date.now().toString(), nome, cnpjCpf, telefone, cidade, estado, email, endereco, observacoes };
-      listaAtual.push(novoCliente);
-      await salvar('clientes', listaAtual);
-    }
+    const dados: any = { nome, cnpjCpf, telefone, cidade, estado, email, endereco, observacoes };
+    if (modoEdicao) dados.id = clienteId;
+    await salvarCliente(uid, dados);
 
     setSalvando(false);
     onSalvo();
@@ -113,8 +103,8 @@ export default function ClientFormScreen({ onVoltar, onSalvo, clienteId }: Props
   }
 
   async function excluirCliente() {
-    const lista = (await carregar<Cliente[]>('clientes')) ?? [];
-    await salvar('clientes', lista.filter((c) => c.id !== clienteId));
+    if (!clienteId) return;
+    await deletarCliente(uid, clienteId);
     onSalvo();
   }
 

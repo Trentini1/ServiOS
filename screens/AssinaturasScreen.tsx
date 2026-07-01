@@ -1,15 +1,15 @@
 ﻿import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList,
-  RefreshControl, Image, Modal, ScrollView,
+  RefreshControl, Image, Modal, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { carregar } from '../utils/cloudStorage';
+import { listarOS } from '../utils/cloudStorage';
 import type { OrdemServico } from './OSListScreen';
 import { useThema } from '../contexts/ThemeContext';
 import { AppTema } from '../utils/temas';
 
-type Props = { onVoltar: () => void; onAbrirOS: (id: string) => void };
+type Props = { uid: string; onVoltar: () => void; onAbrirOS: (id: string) => void };
 
 type FiltroAssinatura = 'todas' | 'completa' | 'parcial' | 'pendente';
 
@@ -17,21 +17,22 @@ const CORES_STATUS: Record<string, string> = {
   Aberta: '#d97706', 'Em Andamento': '#2563eb', Concluída: '#16a34a',
 };
 
-export default function AssinaturasScreen({ onVoltar, onAbrirOS }: Props) {
+export default function AssinaturasScreen({ uid, onVoltar, onAbrirOS }: Props) {
   const tema   = useThema();
   const styles = useMemo(() => criarEstilos(tema), [tema]);
   const [ordens, setOrdens]   = useState<OrdemServico[]>([]);
   const [filtro, setFiltro]   = useState<FiltroAssinatura>('todas');
+  const [carregando, setCarregando] = useState(true);
   const [recarregando, setRecarregando] = useState(false);
   const [previewOS, setPreviewOS]   = useState<OrdemServico | null>(null);
   const [previewTipo, setPreviewTipo] = useState<'tecnico' | 'cliente' | null>(null);
 
   const carregar_ = useCallback(async () => {
-    const lista = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
+    const lista = await listarOS(uid);
     setOrdens(lista);
-  }, []);
+  }, [uid]);
 
-  useEffect(() => { carregar_(); }, [carregar_]);
+  useEffect(() => { carregar_().then(() => setCarregando(false)); }, [carregar_]);
 
   async function recarregar() {
     setRecarregando(true);
@@ -53,6 +54,14 @@ export default function AssinaturasScreen({ onVoltar, onAbrirOS }: Props) {
     parcial:  ordens.filter((o) => (!!o.assinaturaTecnico) !== (!!o.assinaturaCliente)).length,
     pendente: ordens.filter((o) => !o.assinaturaTecnico && !o.assinaturaCliente).length,
   }), [ordens]);
+
+  if (carregando) {
+    return (
+      <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={tema.primario} />
+      </View>
+    );
+  }
 
   const FILTROS: { id: FiltroAssinatura; label: string; cor: string }[] = [
     { id: 'todas',    label: 'Todas',           cor: tema.primario },

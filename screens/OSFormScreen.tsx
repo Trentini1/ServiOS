@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { carregar, salvar } from '../utils/cloudStorage';
+import { carregar, listarClientes, listarOS, salvarOS, atualizarOS } from '../utils/cloudStorage';
 import type { OrdemServico } from './OSListScreen';
 import type { Cliente } from './ClientListScreen';
 import type { Tecnico } from './TecnicosListScreen';
@@ -156,6 +156,7 @@ function Seletor({ valor, placeholder, icon, onPress, onClear }: {
 // ── Componente principal ────────────────────────────────────────────────────
 
 type Props = {
+  uid: string;
   onVoltar: () => void;
   onSalvo: () => void;
   onIrParaClientes: () => void;
@@ -163,7 +164,7 @@ type Props = {
   osId?: string;
 };
 
-export default function OSFormScreen({ onVoltar, onSalvo, onIrParaClientes, dataAgendadaInicial, osId }: Props) {
+export default function OSFormScreen({ uid, onVoltar, onSalvo, onIrParaClientes, dataAgendadaInicial, osId }: Props) {
   const modoEdicao = !!osId;
   const tema   = useThema();
   const styles = useMemo(() => criarEstilos(tema), [tema]);
@@ -206,12 +207,12 @@ export default function OSFormScreen({ onVoltar, onSalvo, onIrParaClientes, data
     Animated.timing(fade, { toValue: 1, duration: 400, useNativeDriver: true }).start();
     (async () => {
       const [cls, tecs, cfg, ordensLista] = await Promise.all([
-        carregar<Cliente[]>('clientes'),
+        listarClientes(uid),
         carregar<Tecnico[]>('tecnicos'),
         carregar<CampoConfig[]>('camposOS'),
-        carregar<OrdemServico[]>('ordensServico'),
+        listarOS(uid),
       ]);
-      const clsLista  = cls  ?? [];
+      const clsLista  = cls;
       const tecsLista = tecs ?? [];
       setClientes(clsLista);
       setTecnicos(tecsLista);
@@ -304,15 +305,11 @@ export default function OSFormScreen({ onVoltar, onSalvo, onIrParaClientes, data
       tipoVeiculo:          campoAtivo('tipoVeiculo')    && tipoVeiculo    ? tipoVeiculo              : undefined,
       seguro:               campoAtivo('seguro')         && seguro         ? seguro                   : undefined,
     };
-    const lista = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
-    if (modoEdicao) {
-      const listaAtualizada = lista.map((o) =>
-        o.id === osId ? { ...o, ...novaOS, id: o.id, dataCriacao: o.dataCriacao, status: o.status } : o
-      );
-      await salvar('ordensServico', listaAtualizada);
+    if (modoEdicao && osId) {
+      const { id, dataCriacao, status, ...alteracoes } = novaOS;
+      await atualizarOS(uid, osId, alteracoes);
     } else {
-      lista.push(novaOS);
-      await salvar('ordensServico', lista);
+      await salvarOS(uid, novaOS);
     }
     setSalvando(false);
     onSalvo();

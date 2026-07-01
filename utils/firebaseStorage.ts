@@ -16,7 +16,9 @@ function extrairBase64EContentType(dataUrl: string): { base64: string; contentTy
 export async function uploadImagemStorage(caminho: string, dataUrl: string): Promise<string> {
   const { base64, contentType } = extrairBase64EContentType(dataUrl);
   const ref = storage().ref(`users/${uid()}/${caminho}`);
-  await ref.putString(base64, 'base64', { contentType });
+  // cacheControl permite que o cliente (e o <Image> do RN) reutilize a
+  // imagem já baixada em vez de buscar novamente quando offline.
+  await ref.putString(base64, 'base64', { contentType, cacheControl: 'public,max-age=31536000' });
   return ref.getDownloadURL();
 }
 

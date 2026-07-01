@@ -10,9 +10,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { carregar, salvar } from '../utils/cloudStorage';
+import { carregar, carregarEmpresa, listarOS, atualizarOS, deletarOS } from '../utils/cloudStorage';
 import type { OrdemServico } from './OSListScreen';
 import SignatureModal from '../components/SignatureModal';
+import FotosOS from '../components/FotosOS';
 import { gerarESalvarPdfOS } from '../utils/gerarPdfOS';
 import { PDF_TEMA_PADRAO } from '../utils/temas';
 import type { PdfTema } from '../utils/temas';
@@ -23,6 +24,7 @@ type Empresa = {
 };
 
 type Props = {
+  uid: string;
   osId: string;
   onVoltar: () => void;
   onAlterado: () => void;
@@ -37,16 +39,17 @@ const CORES_STATUS: Record<string, string> = {
   Concluída: '#16a34a',
 };
 
-export default function OSDetailScreen({ osId, onVoltar, onAlterado, onEditarOS }: Props) {
+export default function OSDetailScreen({ uid, osId, onVoltar, onAlterado, onEditarOS }: Props) {
   const [ordem, setOrdem]               = useState<OrdemServico | null>(null);
   const [modalAssinatura, setModalAssinatura] = useState<'tecnico' | 'cliente' | null>(null);
   const [exportando, setExportando]     = useState(false);
+  const [enviandoFotos, setEnviandoFotos] = useState(false);
 
   const carregarOrdem = useCallback(async () => {
-    const lista = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
+    const lista = await listarOS(uid);
     const encontrada = lista.find((o) => o.id === osId) ?? null;
     setOrdem(encontrada);
-  }, [osId]);
+  }, [uid, osId]);
 
   useEffect(() => {
     carregarOrdem();
@@ -54,32 +57,37 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado, onEditarOS 
 
   async function alterarStatus(novoStatus: OrdemServico['status']) {
     if (!ordem) return;
-    const lista = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
-    const novaLista = lista.map((o) =>
-      o.id === ordem.id ? { ...o, status: novoStatus } : o
-    );
-    await salvar('ordensServico', novaLista);
+    await atualizarOS(uid, ordem.id, { status: novoStatus });
     setOrdem({ ...ordem, status: novoStatus });
     onAlterado();
   }
 
   async function salvarAssinatura(tipo: 'tecnico' | 'cliente', base64: string) {
     if (!ordem) return;
-    const lista = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
     const campo = tipo === 'tecnico' ? 'assinaturaTecnico' : 'assinaturaCliente';
-    const novaLista = lista.map((o) =>
-      o.id === ordem.id ? { ...o, [campo]: base64 } : o
-    );
-    await salvar('ordensServico', novaLista);
-    setOrdem({ ...ordem, [campo]: base64 });
+    await atualizarOS(uid, ordem.id, { [campo]: base64 });
+    await carregarOrdem();
     onAlterado();
+  }
+
+  async function salvarFotos(fotos: string[]) {
+    if (!ordem) return;
+    setOrdem({ ...ordem, fotos });
+    setEnviandoFotos(true);
+    try {
+      await atualizarOS(uid, ordem.id, { fotos });
+      await carregarOrdem();
+      onAlterado();
+    } finally {
+      setEnviandoFotos(false);
+    }
   }
 
   async function exportarPDF() {
     if (!ordem) return;
     setExportando(true);
     try {
-      const empresa  = await carregar<Empresa>('empresa');
+      const empresa  = await carregarEmpresa(uid);
       const pdfTema  = (await carregar<PdfTema>('pdfTema')) ?? PDF_TEMA_PADRAO;
       const logo     = await carregar<string>('logoEmpresa');
       await gerarESalvarPdfOS(
@@ -108,9 +116,7 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado, onEditarOS 
 
   async function excluirOrdem() {
     if (!ordem) return;
-    const lista = (await carregar<OrdemServico[]>('ordensServico')) ?? [];
-    const novaLista = lista.filter((o) => o.id !== ordem.id);
-    await salvar('ordensServico', novaLista);
+    await deletarOS(uid, ordem.id);
     onAlterado();
     onVoltar();
   }
@@ -250,6 +256,14 @@ export default function OSDetailScreen({ osId, onVoltar, onAlterado, onEditarOS 
               </TouchableOpacity>
             ))}
           </View>
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.fotosHeader}>
+            <Text style={styles.secaoTitulo}>Fotos</Text>
+            {enviandoFotos && <ActivityIndicator size="small" color="#2563eb" />}
+          </View>
+          <FotosOS fotos={ordem.fotos ?? []} onChange={salvarFotos} />
         </View>
 
         <View style={styles.card}>
@@ -431,6 +445,12 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  fotosHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
   },
   infoLinha: {
     flexDirection: 'row',
