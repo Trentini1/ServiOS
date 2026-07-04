@@ -36,6 +36,7 @@ yarn-error.*
 # credenciais de conta de serviço (nunca commitar)
 serviceAccountKey*.json
 *-firebase-adminsdk-*.json
+scripts/serviceAccount.json
 
 # typescript
 *.tsbuildinfo

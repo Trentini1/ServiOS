@@ -22,9 +22,11 @@ import AlterarSenhaScreen from './screens/AlterarSenhaScreen';
 import LicencaScreen from './screens/LicencaScreen';
 import CamposOSScreen from './screens/CamposOSScreen';
 import LogoEmpresaScreen from './screens/LogoEmpresaScreen';
-import PromoProScreen from './screens/PromoProScreen';
+import PaywallScreen from './screens/PaywallScreen';
+import ExcluirContaScreen from './screens/ExcluirContaScreen';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { salvar, carregar, remover, salvarEmpresa, carregarEmpresa } from './utils/cloudStorage';
+import { iniciarRevenueCat, verificarAssinatura, type StatusAssinatura } from './utils/subscription';
 
 // Garante que o app continue funcionando (leitura e escrita) sem internet,
 // sincronizando com o Firestore assim que a conexão voltar.
@@ -44,7 +46,8 @@ type Tela =
   | 'agenda' | 'relatorios'
   | 'tecnicos-lista' | 'tecnicos-form' | 'tecnico-editar'
   | 'configuracoes' | 'tema-app' | 'tema-pdf'
-  | 'edicao-empresa' | 'alterar-senha' | 'licenca' | 'campos-os' | 'logo-empresa';
+  | 'edicao-empresa' | 'alterar-senha' | 'licenca' | 'campos-os' | 'logo-empresa'
+  | 'paywall' | 'excluir-conta';
 
 function AppInner() {
   const [carregandoApp, setCarregandoApp] = useState(true);
@@ -57,7 +60,12 @@ function AppInner() {
   const [tecnicoEditandoId, setTecnicoEditandoId] = useState<string | null>(null);
   const [clienteEditandoId, setClienteEditandoId] = useState<string | null>(null);
   const [dataAgendadaOS, setDataAgendadaOS]       = useState<string | undefined>(undefined);
-  const [mostrarPromo, setMostrarPromo]           = useState(false);
+  const [statusAssinatura, setStatusAssinatura]   = useState<StatusAssinatura | null>(null);
+
+  async function recarregarStatusAssinatura(uidAtual: string) {
+    const status = await verificarAssinatura(uidAtual);
+    setStatusAssinatura(status);
+  }
 
   useEffect(() => {
     const unsubscribe = auth().onAuthStateChanged(async (firebaseUser) => {
@@ -67,12 +75,13 @@ function AppInner() {
         setUid(firebaseUser.uid);
         const empresaSalva = await carregarEmpresa(firebaseUser.uid);
         if (empresaSalva) setEmpresa(empresaSalva);
-        const plano = await carregar<string>('plano');
-        if (empresaSalva && plano !== 'pro') setMostrarPromo(true);
+        await iniciarRevenueCat(firebaseUser.uid);
+        await recarregarStatusAssinatura(firebaseUser.uid);
       } else {
         setUsuarioLogado(null);
         setUid('');
         setEmpresa(null);
+        setStatusAssinatura(null);
       }
       setCarregandoApp(false);
     });
@@ -118,6 +127,26 @@ function AppInner() {
 
   if (!usuarioLogado) return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
   if (!empresa)       return <CompanyRegisterScreen onConcluir={handleEmpresaConcluida} />;
+
+  if (!statusAssinatura) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color="#2563eb" />
+      </View>
+    );
+  }
+
+  const telasSempreAcessiveis: Tela[] = ['configuracoes', 'licenca', 'paywall', 'excluir-conta'];
+  if (!statusAssinatura.ativo && !telasSempreAcessiveis.includes(telaAtual)) {
+    return (
+      <PaywallScreen
+        uid={uid}
+        podeIniciarTrial={!statusAssinatura.trialUsado}
+        onLiberado={() => recarregarStatusAssinatura(uid)}
+        onExcluirConta={() => irPara('excluir-conta')}
+      />
+    );
+  }
 
   if (telaAtual === 'os-lista') {
     return (
@@ -244,6 +273,7 @@ function AppInner() {
       <ConfiguracoesScreen
         onVoltar={() => irPara('home')}
         onNavegar={(sub) => irPara(sub)}
+        statusAssinatura={statusAssinatura}
       />
     );
   }
@@ -252,25 +282,39 @@ function AppInner() {
   if (telaAtual === 'tema-pdf')       return <TemaPdfScreen      onVoltar={() => irPara('configuracoes')} />;
   if (telaAtual === 'edicao-empresa') return <EdicaoEmpresaScreen uid={uid} onVoltar={() => irPara('configuracoes')} />;
   if (telaAtual === 'alterar-senha')  return <AlterarSenhaScreen  onVoltar={() => irPara('configuracoes')} />;
-  if (telaAtual === 'licenca')   return <LicencaScreen    onVoltar={() => irPara('configuracoes')} />;
+  if (telaAtual === 'licenca') {
+    return (
+      <LicencaScreen
+        uid={uid}
+        status={statusAssinatura}
+        onVoltar={() => irPara('configuracoes')}
+        onAbrirPaywall={() => irPara('paywall')}
+      />
+    );
+  }
+  if (telaAtual === 'paywall') {
+    return (
+      <PaywallScreen
+        uid={uid}
+        podeIniciarTrial={!statusAssinatura.trialUsado}
+        onLiberado={() => { recarregarStatusAssinatura(uid); irPara('licenca'); }}
+        onVoltar={() => irPara('licenca')}
+      />
+    );
+  }
+  if (telaAtual === 'excluir-conta') return <ExcluirContaScreen onVoltar={() => irPara(statusAssinatura.ativo ? 'configuracoes' : 'paywall')} />;
   if (telaAtual === 'campos-os')    return <CamposOSScreen    onVoltar={() => irPara('configuracoes')} />;
   if (telaAtual === 'logo-empresa') return <LogoEmpresaScreen onVoltar={() => irPara('configuracoes')} />;
 
   return (
-    <>
-      <HomeScreen
-        uid={uid}
-        usuario={usuarioLogado.nome}
-        empresa={empresa}
-        onSair={handleSair}
-        onAbrirMenu={handleAbrirMenu}
-        onAbrirConfiguracoes={() => irPara('configuracoes')}
-      />
-      <PromoProScreen
-        visivel={mostrarPromo}
-        onFechar={() => setMostrarPromo(false)}
-      />
-    </>
+    <HomeScreen
+      uid={uid}
+      usuario={usuarioLogado.nome}
+      empresa={empresa}
+      onSair={handleSair}
+      onAbrirMenu={handleAbrirMenu}
+      onAbrirConfiguracoes={() => irPara('configuracoes')}
+    />
   );
 }
 

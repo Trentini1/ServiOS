@@ -5,6 +5,7 @@
  *   /users/{uid}/empresa/dados        →  documento único da empresa
  *   /users/{uid}/clientes/{clienteId} →  coleção de clientes
  *   /users/{uid}/ordensServico/{osId} →  coleção de ordens de serviço
+ *   /users/{uid}/assinatura/dados     →  documento único de status de assinatura/trial
  *   /users/{uid}/dados/{chave}        →  demais dados (técnicos, agenda, temas, config...)
  *
  * Imagens (base64) de fotos e assinaturas de OS são automaticamente
@@ -106,6 +107,42 @@ export async function carregarEmpresa<T = any>(uid: string): Promise<T | null> {
     return dados;
   } catch {
     return carregarLocal<T>('empresa');
+  }
+}
+
+// ── Assinatura (documento único) ────────────────────────────
+
+export type DadosAssinatura = {
+  assinante: boolean;
+  trialIniciadoEm: number | null;
+  expiraEm: number | null;
+  atualizadoEm: number;
+};
+
+function refAssinatura(uid: string) {
+  return firestore().collection('users').doc(uid).collection('assinatura').doc('dados');
+}
+
+export async function salvarAssinatura(uid: string, dados: Partial<DadosAssinatura>): Promise<void> {
+  const atual = (await carregarAssinatura(uid)) ?? {};
+  const mesclado = { ...atual, ...dados, atualizadoEm: Date.now() };
+  try {
+    await refAssinatura(uid).set(mesclado, { merge: true });
+  } catch {
+    console.warn('[cloudStorage] Firestore offline, assinatura salva apenas localmente');
+  }
+  await salvarLocal('assinatura', mesclado);
+}
+
+export async function carregarAssinatura(uid: string): Promise<DadosAssinatura | null> {
+  try {
+    const snap = await refAssinatura(uid).get();
+    if (!snap.exists) return carregarLocal<DadosAssinatura>('assinatura');
+    const dados = snap.data() as DadosAssinatura;
+    await salvarLocal('assinatura', dados);
+    return dados;
+  } catch {
+    return carregarLocal<DadosAssinatura>('assinatura');
   }
 }
 

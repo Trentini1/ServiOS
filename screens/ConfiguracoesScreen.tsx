@@ -4,13 +4,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThema } from '../contexts/ThemeContext';
 import { AppTema } from '../utils/temas';
+import type { StatusAssinatura } from '../utils/subscription';
 
 const VERSAO  = '1.0.0';
 const ANO     = '2025';
 const CRIADOR = 'Erick Trentini';
 
-type SubTela = 'tema-app' | 'tema-pdf' | 'edicao-empresa' | 'alterar-senha' | 'licenca' | 'campos-os' | 'logo-empresa';
-type Props = { onVoltar: () => void; onNavegar: (tela: SubTela) => void };
+type SubTela = 'tema-app' | 'tema-pdf' | 'edicao-empresa' | 'alterar-senha' | 'licenca' | 'campos-os' | 'logo-empresa' | 'excluir-conta';
+type Props = { onVoltar: () => void; onNavegar: (tela: SubTela) => void; statusAssinatura: StatusAssinatura | null };
 
 const MENU_APARENCIA = [
   { id: 'tema-app'  as SubTela, icone: 'color-palette-outline', cor: '#6366f1', titulo: 'Tema do App',  descricao: '5 temas • cores personalizadas' },
@@ -27,13 +28,13 @@ const MENU_CONTA = [
   { id: 'alterar-senha'  as SubTela, icone: 'lock-closed-outline',  cor: '#d97706', titulo: 'Alterar Senha',   descricao: 'Atualize a senha da sua conta'         },
 ];
 
-const MENU_LICENCA = [
-  { id: 'licenca' as SubTela, icone: 'flash-outline', cor: '#6366f1', titulo: 'Minha Licença', descricao: 'Plano atual · Upgrade para Pro · R$ 50/mês' },
+const MENU_RISCO = [
+  { id: 'excluir-conta' as SubTela, icone: 'trash-outline', cor: '#f87171', titulo: 'Excluir Conta', descricao: 'Apaga seus dados permanentemente' },
 ];
 
 type ItemMenu = typeof MENU_APARENCIA[number];
 
-export default function ConfiguracoesScreen({ onVoltar, onNavegar }: Props) {
+export default function ConfiguracoesScreen({ onVoltar, onNavegar, statusAssinatura }: Props) {
   const tema   = useThema();
   const styles = useMemo(() => criarEstilos(tema), [tema]);
 
@@ -119,8 +120,16 @@ export default function ConfiguracoesScreen({ onVoltar, onNavegar }: Props) {
               <Ionicons name="flash" size={20} color="#f59e0b" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.licencaTitulo}>Plano Gratuito</Text>
-              <Text style={styles.licencaSub}>Fazer upgrade para Pro · R$ 50/mês</Text>
+              <Text style={styles.licencaTitulo}>
+                {statusAssinatura?.assinante ? 'Pro Ativo' : statusAssinatura?.trial ? 'Teste Grátis' : 'Plano Gratuito'}
+              </Text>
+              <Text style={styles.licencaSub}>
+                {statusAssinatura?.assinante
+                  ? 'Ver detalhes da assinatura'
+                  : statusAssinatura?.trial
+                  ? `${statusAssinatura.diasRestantesTrial} dia${statusAssinatura.diasRestantesTrial === 1 ? '' : 's'} restante${statusAssinatura.diasRestantesTrial === 1 ? '' : 's'} · Assine o Pro`
+                  : 'Assine o TecnoOS Pro'}
+              </Text>
             </View>
             <View style={styles.licencaArrow}>
               <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.7)" />
@@ -131,6 +140,7 @@ export default function ConfiguracoesScreen({ onVoltar, onNavegar }: Props) {
         {renderGrupo('Ordens de Serviço', MENU_OS)}
         {renderGrupo('Aparência', MENU_APARENCIA)}
         {renderGrupo('Conta & Empresa', MENU_CONTA)}
+        {renderGrupo('Zona de Risco', MENU_RISCO)}
 
         {/* Sobre */}
         <View style={styles.grupo}>
