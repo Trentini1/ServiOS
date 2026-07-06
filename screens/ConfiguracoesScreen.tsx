@@ -11,7 +11,13 @@ const ANO     = '2025';
 const CRIADOR = 'Erick Trentini';
 
 type SubTela = 'tema-app' | 'tema-pdf' | 'edicao-empresa' | 'alterar-senha' | 'licenca' | 'campos-os' | 'logo-empresa' | 'excluir-conta';
-type Props = { onVoltar: () => void; onNavegar: (tela: SubTela) => void; statusAssinatura: StatusAssinatura | null };
+type Props = {
+  onVoltar: () => void;
+  onNavegar: (tela: SubTela) => void;
+  statusAssinatura: StatusAssinatura | null;
+  usuarioNome: string;
+  usuarioEmail: string;
+};
 
 const MENU_APARENCIA = [
   { id: 'tema-app'  as SubTela, icone: 'color-palette-outline', cor: '#6366f1', titulo: 'Tema do App',  descricao: '5 temas • cores personalizadas' },
@@ -34,7 +40,7 @@ const MENU_RISCO = [
 
 type ItemMenu = typeof MENU_APARENCIA[number];
 
-export default function ConfiguracoesScreen({ onVoltar, onNavegar, statusAssinatura }: Props) {
+export default function ConfiguracoesScreen({ onVoltar, onNavegar, statusAssinatura, usuarioNome, usuarioEmail }: Props) {
   const tema   = useThema();
   const styles = useMemo(() => criarEstilos(tema), [tema]);
 
@@ -102,6 +108,17 @@ export default function ConfiguracoesScreen({ onVoltar, onNavegar, statusAssinat
                 <Text style={[styles.bannerChipTexto, { color: tema.textoMuted }]}>{ANO}</Text>
               </View>
             </View>
+          </View>
+        </View>
+
+        {/* Usuário logado */}
+        <View style={[styles.usuarioCard, { backgroundColor: tema.card, borderColor: tema.borda }]}>
+          <View style={[styles.usuarioAvatar, { backgroundColor: tema.primario + '22', borderColor: tema.primario + '44' }]}>
+            <Ionicons name="person" size={18} color={tema.primario} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.usuarioNome, { color: tema.texto }]}>{usuarioNome}</Text>
+            <Text style={[styles.usuarioEmail, { color: tema.textoMuted }]}>{usuarioEmail}</Text>
           </View>
         </View>
 
@@ -194,6 +211,13 @@ function criarEstilos(t: AppTema) {
     bannerMeta: { flexDirection: 'row', gap: 6, marginTop: 8 },
     bannerChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
     bannerChipTexto: { fontSize: 11, fontWeight: '700' },
+    usuarioCard: {
+      flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14,
+      borderRadius: 14, borderWidth: 1, marginBottom: 16,
+    },
+    usuarioAvatar: { width: 38, height: 38, borderRadius: 11, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+    usuarioNome: { fontSize: 14, fontWeight: '700' },
+    usuarioEmail: { fontSize: 12, marginTop: 2 },
     grupo: { marginBottom: 20 },
     grupoLabel: {
       color: t.textoMuted, fontSize: 11, fontWeight: '700',

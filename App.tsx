@@ -274,6 +274,8 @@ function AppInner() {
         onVoltar={() => irPara('home')}
         onNavegar={(sub) => irPara(sub)}
         statusAssinatura={statusAssinatura}
+        usuarioNome={usuarioLogado.nome}
+        usuarioEmail={usuarioLogado.email}
       />
     );
   }

@@ -6,15 +6,14 @@
  *      período de 1 mês) no App Store Connect.
  *   2. Criar conta em app.revenuecat.com, cadastrar o mesmo produto, um entitlement
  *      chamado "pro" e uma offering com um pacote mensal apontando para ele.
- *   3. Colar a API key iOS do RevenueCat em REVENUECAT_API_KEY_IOS abaixo.
- *   4. Gerar um novo build de dev client (`eas build --profile development`) — é
+ *   3. Gerar um novo build de dev client (`eas build --profile development`) — é
  *      módulo nativo, não funciona no Expo Go nem no dev client já instalado.
  */
 
 import Purchases, { type PurchasesPackage } from 'react-native-purchases';
 import { carregarAssinatura, salvarAssinatura, type DadosAssinatura } from './cloudStorage';
 
-const REVENUECAT_API_KEY_IOS = 'COLE_AQUI_A_API_KEY_IOS_DO_REVENUECAT';
+const REVENUECAT_API_KEY_IOS = 'test_fAxJbGbHdEsCtcGkEIzVEyywfNm';
 const ENTITLEMENT_ID = 'pro';
 const DIAS_TRIAL = 7;
 
