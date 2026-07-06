@@ -14,7 +14,7 @@ import Purchases, { type PurchasesPackage } from 'react-native-purchases';
 import { carregarAssinatura, salvarAssinatura, type DadosAssinatura } from './cloudStorage';
 
 const REVENUECAT_API_KEY_IOS = 'test_fAxJbGbHdEsCtcGkEIzVEyywfNm';
-const ENTITLEMENT_ID = 'pro';
+const ENTITLEMENT_ID = 'TecnoOS Pro';
 const DIAS_TRIAL = 7;
 
 export type StatusAssinatura = {
