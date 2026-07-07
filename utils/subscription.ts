@@ -2,7 +2,7 @@
  * Assinatura TecnoOS Pro via RevenueCat (StoreKit 2).
  *
  * Configuração pendente do lado do usuário antes de testar em dispositivo:
- *   1. Criar o produto `com.trentini.servios.pro.mensal` (Auto-Renewable Subscription,
+ *   1. Criar o produto `com.trentini.servios.pro.MS` (Auto-Renewable Subscription,
  *      período de 1 mês) no App Store Connect.
  *   2. Criar conta em app.revenuecat.com, cadastrar o mesmo produto, um entitlement
  *      chamado "pro" e uma offering com um pacote mensal apontando para ele.
