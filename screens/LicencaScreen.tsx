@@ -6,6 +6,9 @@ import { useThema } from '../contexts/ThemeContext';
 import { AppTema } from '../utils/temas';
 import { restaurarCompras, type StatusAssinatura } from '../utils/subscription';
 
+const URL_PRIVACIDADE = 'https://trentini1.github.io/tecnoos-privacidade/';
+const URL_TERMOS_USO = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
+
 type Props = { uid: string; status: StatusAssinatura; onVoltar: () => void; onAbrirPaywall: () => void };
 
 const RECURSOS_PRO = [
@@ -131,6 +134,16 @@ export default function LicencaScreen({ uid, status, onVoltar, onAbrirPaywall }:
           </Text>
         </TouchableOpacity>
 
+        <View style={styles.legalLinhas}>
+          <TouchableOpacity onPress={() => Linking.openURL(URL_TERMOS_USO)}>
+            <Text style={[styles.legalTexto, { color: tema.textoMuted }]}>Termos de Uso</Text>
+          </TouchableOpacity>
+          <Text style={{ fontSize: 11, color: tema.textoMuted }}> · </Text>
+          <TouchableOpacity onPress={() => Linking.openURL(URL_PRIVACIDADE)}>
+            <Text style={[styles.legalTexto, { color: tema.textoMuted }]}>Política de Privacidade</Text>
+          </TouchableOpacity>
+        </View>
+
         <Text style={[styles.rodape, { color: tema.textoFraco }]}>
           TecnoOS Pro · Desenvolvido por Erick Trentini
         </Text>
@@ -191,6 +204,9 @@ function criarEstilos(t: AppTema) {
 
     restaurarBtn: { paddingVertical: 10, marginBottom: 8 },
     restaurarTexto: { fontSize: 13, fontWeight: '600', textAlign: 'center' },
+
+    legalLinhas: { flexDirection: 'row', justifyContent: 'center', marginBottom: 8 },
+    legalTexto: { fontSize: 11, fontWeight: '600', textDecorationLine: 'underline' },
 
     rodape: { textAlign: 'center', fontSize: 11, marginTop: 4 },
   });

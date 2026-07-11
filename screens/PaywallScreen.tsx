@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { PurchasesPackage } from 'react-native-purchases';
 import { useThema } from '../contexts/ThemeContext';
 import { AppTema } from '../utils/temas';
 import { obterPacoteAtual, comprarAssinatura, restaurarCompras, iniciarTrial } from '../utils/subscription';
+
+const URL_PRIVACIDADE = 'https://trentini1.github.io/tecnoos-privacidade/';
+const URL_TERMOS_USO = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
 
 type Props = {
   uid: string;
@@ -115,6 +118,7 @@ export default function PaywallScreen({ uid, podeIniciarTrial, onLiberado, onVol
             <ActivityIndicator color="#ffffff" />
           ) : pacote ? (
             <>
+              <Text style={styles.assinarDuracao}>TecnoOS Pro · Assinatura mensal</Text>
               <Text style={styles.assinarPreco}>{pacote.product.priceString}/mês</Text>
               <TouchableOpacity
                 style={styles.assinarBtn}
@@ -135,6 +139,16 @@ export default function PaywallScreen({ uid, podeIniciarTrial, onLiberado, onVol
         <TouchableOpacity onPress={handleRestaurar} disabled={processando} style={styles.linkBtn}>
           <Text style={[styles.linkTexto, { color: tema.textoSec }]}>Restaurar compras</Text>
         </TouchableOpacity>
+
+        <View style={styles.legalLinhas}>
+          <TouchableOpacity onPress={() => Linking.openURL(URL_TERMOS_USO)}>
+            <Text style={[styles.legalTexto, { color: tema.textoMuted }]}>Termos de Uso</Text>
+          </TouchableOpacity>
+          <Text style={{ fontSize: 11, color: tema.textoMuted }}> · </Text>
+          <TouchableOpacity onPress={() => Linking.openURL(URL_PRIVACIDADE)}>
+            <Text style={[styles.legalTexto, { color: tema.textoMuted }]}>Política de Privacidade</Text>
+          </TouchableOpacity>
+        </View>
 
         {podeIniciarTrial && (
           <TouchableOpacity onPress={handleContinuarTrial} disabled={processando} style={styles.linkBtn}>
@@ -174,11 +188,14 @@ function criarEstilos(t: AppTema) {
     beneficioIcone: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
     beneficioTexto: { fontSize: 13, fontWeight: '600', flex: 1 },
     assinarCard: { width: '100%', borderRadius: 18, padding: 20, alignItems: 'center', marginBottom: 12 },
+    assinarDuracao: { color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '600', marginBottom: 4 },
     assinarPreco: { color: '#ffffff', fontSize: 22, fontWeight: '800', marginBottom: 14 },
     assinarBtn: { backgroundColor: '#ffffff', borderRadius: 14, paddingVertical: 15, paddingHorizontal: 20, width: '100%', alignItems: 'center' },
     assinarBtnTexto: { fontSize: 15, fontWeight: '800' },
     assinarIndisponivel: { color: 'rgba(255,255,255,0.85)', fontSize: 13, textAlign: 'center', fontWeight: '600' },
     linkBtn: { paddingVertical: 10 },
     linkTexto: { fontSize: 13, fontWeight: '600', textAlign: 'center' },
+    legalLinhas: { flexDirection: 'row', justifyContent: 'center', marginTop: 8 },
+    legalTexto: { fontSize: 11, fontWeight: '600', textDecorationLine: 'underline' },
   });
 }

@@ -166,7 +166,7 @@ export default function ConfiguracoesScreen({ onVoltar, onNavegar, statusAssinat
             {[
               { label: 'Desenvolvedor', valor: CRIADOR,        icone: 'person-outline'   },
               { label: 'Versão',        valor: VERSAO,          icone: 'code-slash-outline' },
-              { label: 'Plataforma',    valor: 'iOS · Android', icone: 'phone-portrait-outline' },
+              { label: 'Plataforma',    valor: 'iOS',           icone: 'phone-portrait-outline' },
             ].map((row, idx, arr) => (
               <View
                 key={row.label}
