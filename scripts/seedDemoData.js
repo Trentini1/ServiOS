@@ -77,7 +77,18 @@ async function main() {
     await raizUsuario.collection('ordensServico').doc(os.id).set(os, { merge: true });
   }
 
+  // Simula assinatura expirada (trial já usado, não assinante) para review da Apple
+  // poder testar o fluxo de compra a partir do Paywall.
+  const TRIAL_EXPIRADO_HA_DIAS = 30;
+  await raizUsuario.collection('assinatura').doc('dados').set({
+    assinante: false,
+    trialIniciadoEm: Date.now() - TRIAL_EXPIRADO_HA_DIAS * 24 * 60 * 60 * 1000,
+    expiraEm: null,
+    atualizadoEm: Date.now(),
+  }, { merge: true });
+
   console.log(`Dados de demonstração criados para ${EMAIL_DEMO} (uid: ${uid}).`);
+  console.log('Assinatura marcada como expirada (trial já usado) para testar o Paywall/compra na review da Apple.');
   if (!process.env.DEMO_PASSWORD) {
     console.log(`Senha padrão usada: ${SENHA_DEMO} (defina DEMO_PASSWORD para customizar).`);
   }
