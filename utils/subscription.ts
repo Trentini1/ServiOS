@@ -46,6 +46,11 @@ export async function verificarAssinatura(uid: string): Promise<StatusAssinatura
   let expiraEm: Date | null = null;
 
   try {
+    // O CustomerInfo é cacheado localmente pelo SDK e não se atualiza sozinho
+    // quando a assinatura muda por fora do app (ex.: cancelamento nas
+    // Assinaturas da Apple). Como essa checagem decide se o app libera ou
+    // bloqueia o usuário, força buscar o estado real antes de ler.
+    await Purchases.invalidateCustomerInfoCache();
     const info = await Purchases.getCustomerInfo();
     const entitlement = info.entitlements.active[ENTITLEMENT_ID];
     if (entitlement) {
