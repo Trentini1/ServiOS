@@ -50,29 +50,30 @@ async function main() {
   const clientes = [
     { id: 'demo-cliente-1', nome: 'Porto Sul Transportes', cnpjCpf: '12.345.678/0001-90', telefone: '(41) 3333-1122', cidade: 'Curitiba', estado: 'PR' },
     { id: 'demo-cliente-2', nome: 'João da Silva', cnpjCpf: '123.456.789-00', telefone: '(41) 98888-2233', cidade: 'Curitiba', estado: 'PR' },
+    { id: 'demo-cliente-3', nome: 'Naval Sul Engenharia', cnpjCpf: '23.456.789/0001-11', telefone: '(41) 3322-4455', cidade: 'Paranaguá', estado: 'PR' },
+    { id: 'demo-cliente-4', nome: 'Maria Oliveira', cnpjCpf: '234.567.890-11', telefone: '(41) 97777-3344', cidade: 'Curitiba', estado: 'PR' },
+    { id: 'demo-cliente-5', nome: 'Transportadora Litoral', cnpjCpf: '34.567.890/0001-22', telefone: '(41) 3344-5566', cidade: 'Antonina', estado: 'PR' },
   ];
   for (const cliente of clientes) {
     await raizUsuario.collection('clientes').doc(cliente.id).set(cliente, { merge: true });
   }
 
   const hoje = new Date().toLocaleDateString('pt-BR');
-  const ordens = [
-    {
-      id: 'demo-os-1', cliente: clientes[0].nome, clienteTelefone: clientes[0].telefone,
-      motor: 'Motor Volvo Penta D13', posicao: 'BB', tipoManutencao: 'Preventiva',
-      descricao: 'Troca de óleo e filtros programada.', status: 'Aberta', dataCriacao: hoje,
-    },
-    {
-      id: 'demo-os-2', cliente: clientes[1].nome, clienteTelefone: clientes[1].telefone,
-      motor: 'Gerador Cummins 150kVA', posicao: 'Ré', tipoManutencao: 'Corretiva',
-      descricao: 'Ruído anormal no motor durante a partida.', status: 'Em Andamento', dataCriacao: hoje,
-    },
-    {
-      id: 'demo-os-3', cliente: clientes[0].nome, clienteTelefone: clientes[0].telefone,
-      motor: 'Bomba hidráulica principal', posicao: 'Vante', tipoManutencao: 'Revisão',
-      descricao: 'Revisão geral concluída com troca de vedações.', status: 'Concluída', dataCriacao: hoje,
-    },
+  const motores = [
+    'Motor Volvo Penta D13', 'Gerador Cummins 150kVA', 'Bomba hidráulica principal',
+    'Motor MAN D2676', 'Compressor de ar Atlas Copco', 'Gerador Perkins 100kVA',
+    'Motor Scania DC13', 'Bomba de porão', 'Motor Caterpillar C18', 'Guincho hidráulico',
   ];
+  const tipos = ['Preventiva', 'Corretiva', 'Revisão'];
+  const posicoes = ['BB', 'Ré', 'Vante', 'Boreste', 'Convés'];
+  const ordens = Array.from({ length: 10 }, (_, i) => {
+    const cliente = clientes[i % clientes.length];
+    return {
+      id: `demo-os-${i + 1}`, cliente: cliente.nome, clienteTelefone: cliente.telefone,
+      motor: motores[i], posicao: posicoes[i % posicoes.length], tipoManutencao: tipos[i % tipos.length],
+      descricao: 'Ordem de serviço em aberto aguardando execução.', status: 'Aberta', dataCriacao: hoje,
+    };
+  });
   for (const os of ordens) {
     await raizUsuario.collection('ordensServico').doc(os.id).set(os, { merge: true });
   }

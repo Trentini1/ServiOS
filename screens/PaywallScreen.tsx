@@ -9,6 +9,7 @@ import { obterPacoteAtual, comprarAssinatura, restaurarCompras, iniciarTrial } f
 
 const URL_PRIVACIDADE = 'https://trentini1.github.io/tecnoos-privacidade/';
 const URL_TERMOS_USO = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
+const COR_ALERTA = '#f87171';
 
 type Props = {
   uid: string;
@@ -92,6 +93,15 @@ export default function PaywallScreen({ uid, podeIniciarTrial, onLiberado, onVol
         <View style={[styles.logoBox, { backgroundColor: tema.primario + '22', borderColor: tema.primario + '44' }]}>
           <Ionicons name="construct" size={30} color={tema.primario} />
         </View>
+
+        {!podeIniciarTrial && (
+          <View style={[styles.avisoExpirado, { backgroundColor: COR_ALERTA + '1a', borderColor: COR_ALERTA + '44' }]}>
+            <Ionicons name="alert-circle" size={18} color={COR_ALERTA} />
+            <Text style={[styles.avisoExpiradoTexto, { color: COR_ALERTA }]}>
+              Sua assinatura expirou. Suas Ordens de Serviço e clientes continuam salvos, mas ficam bloqueados até você renovar.
+            </Text>
+          </View>
+        )}
 
         <Text style={[styles.titulo, { color: tema.texto }]}>TecnoOS Pro</Text>
         <Text style={[styles.subtitulo, { color: tema.textoSec }]}>
@@ -179,6 +189,11 @@ function criarEstilos(t: AppTema) {
       width: 64, height: 64, borderRadius: 18, borderWidth: 1,
       alignItems: 'center', justifyContent: 'center', marginTop: 24, marginBottom: 16,
     },
+    avisoExpirado: {
+      flexDirection: 'row', alignItems: 'center', gap: 10, width: '100%',
+      borderRadius: 12, borderWidth: 1, padding: 12, marginBottom: 16,
+    },
+    avisoExpiradoTexto: { flex: 1, fontSize: 12, fontWeight: '600', lineHeight: 17 },
     titulo: { fontSize: 24, fontWeight: '800', letterSpacing: -0.5, marginBottom: 8 },
     subtitulo: { fontSize: 13, textAlign: 'center', lineHeight: 20, marginBottom: 24, paddingHorizontal: 8 },
     beneficiosCard: {
