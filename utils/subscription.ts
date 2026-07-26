@@ -26,6 +26,8 @@ export type StatusAssinatura = {
   trialUsado: boolean;
   diasRestantesTrial: number;
   expiraEm: Date | null;
+  acessoManual: boolean;
+  acessoManualAte: Date | null;
 };
 
 export type AcessoManual = { ativo: boolean; ativoAte: Date | null };
@@ -77,6 +79,8 @@ export async function verificarAssinatura(uid: string, email?: string): Promise<
       trialUsado: false,
       diasRestantesTrial: 0,
       expiraEm: acesso.ativoAte,
+      acessoManual: acesso.ativo,
+      acessoManualAte: acesso.ativoAte,
     };
   }
 
@@ -122,6 +126,8 @@ export async function verificarAssinatura(uid: string, email?: string): Promise<
     trialUsado,
     diasRestantesTrial,
     expiraEm: expiraEm ?? acesso.ativoAte,
+    acessoManual: acesso.ativo,
+    acessoManualAte: acesso.ativoAte,
   };
 }
 

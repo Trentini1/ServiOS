@@ -77,23 +77,25 @@ export default function LicencaScreen({ uid, email, status, onVoltar, onAbrirPay
     );
   }
 
-  // Acesso liberado manualmente pelo painel admin, sem ser via assinatura/trial.
-  const acessoManualAtivo = status.ativo && !status.assinante && !status.trial;
+  // Acesso liberado manualmente pelo painel admin. É uma ação deliberada do
+  // admin, então tem prioridade de exibição sobre um trial automático — mesmo
+  // que a conta também tenha um trial rodando ao mesmo tempo.
+  const acessoManualAtivo = status.acessoManual;
 
   const corStatus = status.assinante || acessoManualAtivo ? '#16a34a' : status.trial ? '#d97706' : '#f87171';
   const tituloStatus = status.assinante
     ? 'Pro — Ativo'
-    : status.trial
-    ? `Teste grátis · ${status.diasRestantesTrial} dia${status.diasRestantesTrial === 1 ? '' : 's'} restante${status.diasRestantesTrial === 1 ? '' : 's'}`
     : acessoManualAtivo
     ? 'Acesso Liberado'
+    : status.trial
+    ? `Teste grátis · ${status.diasRestantesTrial} dia${status.diasRestantesTrial === 1 ? '' : 's'} restante${status.diasRestantesTrial === 1 ? '' : 's'}`
     : 'Assinatura expirada';
   const infoStatus = status.assinante && status.expiraEm
     ? `Sua assinatura renova em ${formatarData(status.expiraEm)}.`
+    : acessoManualAtivo && status.acessoManualAte
+    ? `Acesso liberado manualmente, válido até ${formatarData(status.acessoManualAte)}.`
     : status.trial
     ? 'Aproveite o período de teste. Assine para continuar usando após o fim do trial.'
-    : acessoManualAtivo && status.expiraEm
-    ? `Acesso liberado manualmente, válido até ${formatarData(status.expiraEm)}.`
     : 'Assine o TecnoOS Pro para continuar usando todos os recursos.';
 
   function handleGerenciar() {
