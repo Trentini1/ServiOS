@@ -64,10 +64,12 @@ export async function iniciarRevenueCat(uid: string): Promise<void> {
 }
 
 export async function verificarAssinatura(uid: string, email?: string): Promise<StatusAssinatura> {
-  // Android: Play Billing não está configurado (sem Play Store/MEI). O acesso é
-  // 100% controlado manualmente pelo painel admin, sem trial nem RevenueCat.
+  // Acesso liberado manualmente pelo painel admin (/acessosManuais/{email}).
+  // Sincronizado nas duas plataformas: no Android é a única forma de acesso
+  // (sem Play Billing); no iOS soma-se ao RevenueCat/trial normais.
+  const acesso = email ? await verificarAcessoManual(email) : { ativo: false, ativoAte: null };
+
   if (Platform.OS === 'android') {
-    const acesso = email ? await verificarAcessoManual(email) : { ativo: false, ativoAte: null };
     return {
       ativo: acesso.ativo,
       assinante: false,
@@ -114,12 +116,12 @@ export async function verificarAssinatura(uid: string, email?: string): Promise<
   }
 
   return {
-    ativo: assinante || trial,
+    ativo: assinante || trial || acesso.ativo,
     assinante,
     trial,
     trialUsado,
     diasRestantesTrial,
-    expiraEm,
+    expiraEm: expiraEm ?? acesso.ativoAte,
   };
 }
 

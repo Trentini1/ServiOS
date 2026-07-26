@@ -77,16 +77,23 @@ export default function LicencaScreen({ uid, email, status, onVoltar, onAbrirPay
     );
   }
 
-  const corStatus = status.assinante ? '#16a34a' : status.trial ? '#d97706' : '#f87171';
+  // Acesso liberado manualmente pelo painel admin, sem ser via assinatura/trial.
+  const acessoManualAtivo = status.ativo && !status.assinante && !status.trial;
+
+  const corStatus = status.assinante || acessoManualAtivo ? '#16a34a' : status.trial ? '#d97706' : '#f87171';
   const tituloStatus = status.assinante
     ? 'Pro — Ativo'
     : status.trial
     ? `Teste grátis · ${status.diasRestantesTrial} dia${status.diasRestantesTrial === 1 ? '' : 's'} restante${status.diasRestantesTrial === 1 ? '' : 's'}`
+    : acessoManualAtivo
+    ? 'Acesso Liberado'
     : 'Assinatura expirada';
   const infoStatus = status.assinante && status.expiraEm
     ? `Sua assinatura renova em ${formatarData(status.expiraEm)}.`
     : status.trial
     ? 'Aproveite o período de teste. Assine para continuar usando após o fim do trial.'
+    : acessoManualAtivo && status.expiraEm
+    ? `Acesso liberado manualmente, válido até ${formatarData(status.expiraEm)}.`
     : 'Assine o TecnoOS Pro para continuar usando todos os recursos.';
 
   function handleGerenciar() {
@@ -130,7 +137,7 @@ export default function LicencaScreen({ uid, email, status, onVoltar, onAbrirPay
         <View style={[styles.planoAtualCard, { backgroundColor: tema.card, borderColor: tema.borda }]}>
           <View style={styles.planoAtualTop}>
             <View style={[styles.planoIcone, { backgroundColor: corStatus + '20' }]}>
-              <Ionicons name={status.assinante ? 'shield-checkmark' : status.trial ? 'time-outline' : 'shield-outline'} size={22} color={corStatus} />
+              <Ionicons name={status.assinante || acessoManualAtivo ? 'shield-checkmark' : status.trial ? 'time-outline' : 'shield-outline'} size={22} color={corStatus} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.planoAtualLabel, { color: tema.textoMuted }]}>Plano atual</Text>
@@ -146,7 +153,7 @@ export default function LicencaScreen({ uid, email, status, onVoltar, onAbrirPay
             <Ionicons name="settings-outline" size={16} color={tema.texto} />
             <Text style={[styles.gerenciarBtnTexto, { color: tema.texto }]}>Gerenciar assinatura</Text>
           </TouchableOpacity>
-        ) : (
+        ) : acessoManualAtivo ? null : (
           <View style={[styles.proCard, { shadowColor: tema.primario }]}>
             <LinearGradient
               colors={[tema.primario, tema.primario + 'cc'] as any}
