@@ -196,13 +196,10 @@ function cssParaTema(pdfTema: PdfTema): string {
   const tdExtra = tabelaExtra[estiloTabela] ?? tabelaExtra.moderno;
 
   return `
-    .cabecalho { background: ${corHeader}; border-bottom: 4px solid ${corAcento}; }
-    .empresa-nome { color: ${corTextoHeader}; }
-    .empresa-info { color: ${corTextoHeader}; opacity: 0.72; }
-    .doc-titulo { color: ${corTextoHeader}; opacity: 0.8; }
-    .doc-numero { color: ${corTextoHeader}; }
-    .doc-cliente { color: ${corTextoHeader}; }
-    .doc-data { color: ${corTextoHeader}; opacity: 0.72; }
+    .cabecalho { border-bottom: 4px solid ${corAcento}; }
+    .empresa-nome { color: ${corHeader}; }
+    .empresa-tag { background: ${corHeader}; color: ${corTextoHeader}; }
+    .doc-numero { color: ${corAcento}; }
     .secao-titulo {
       font-size: 10px; font-weight: 700; color: ${corSecao};
       text-transform: uppercase; letter-spacing: 0.6px;
@@ -230,7 +227,6 @@ function montarHTML(ordem: OrdemServico, empresa: Empresa, pdfTema: PdfTema, log
   const corPrioridade = ordem.prioridade ? (PRIORIDADE_CORES[ordem.prioridade] ?? pdfTema.corAcento) : undefined;
 
   const infoGeral = [
-    campo('Cliente', ordem.cliente),
     campo('Telefone do Cliente', ordem.clienteTelefone),
     campo('Motor / Equipamento', ordem.motor),
     campo('Posição', ordem.posicao),
@@ -273,22 +269,26 @@ function montarHTML(ordem: OrdemServico, empresa: Empresa, pdfTema: PdfTema, log
 
           .cabecalho {
             display: flex; justify-content: space-between; align-items: flex-start;
-            padding: 20px 40px; margin: -56px -40px 22px;
+            padding: 0 0 14px; margin: 0 0 22px;
           }
           .empresa-bloco { display: flex; align-items: center; gap: 14px; }
           .empresa-logo {
-            width: 56px; height: 56px; object-fit: contain; border-radius: 8px;
-            background: #ffffff; flex-shrink: 0; padding: 3px;
+            width: 60px; height: 60px; object-fit: contain; border-radius: 8px;
+            background: #ffffff; border: 1px solid #e2e8f0; flex-shrink: 0; padding: 4px;
           }
-          .empresa-nome { font-size: 19px; font-weight: 700; }
-          .empresa-info { font-size: 11px; margin-top: 3px; }
+          .empresa-nome { font-size: 24px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px; line-height: 1.1; }
+          .empresa-tag {
+            display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.6px; padding: 2px 8px; border-radius: 3px; margin-top: 5px;
+          }
+          .empresa-info { font-size: 10.5px; color: #64748b; margin-top: 3px; }
           .doc-bloco { text-align: right; }
-          .doc-titulo { font-size: 11px; font-weight: 700; letter-spacing: 1px; }
-          .doc-numero { font-size: 18px; font-weight: 700; margin-top: 2px; font-family: 'Courier New', monospace; }
-          .doc-cliente-label { font-size: 9px; margin-top: 8px; opacity: 0.6; text-transform: uppercase; }
-          .doc-cliente { font-size: 13px; font-weight: 700; }
-          .doc-data { font-size: 10px; margin-top: 6px; }
-          .doc-status { margin-top: 8px; }
+          .doc-label { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.8px; }
+          .doc-numero { font-size: 20px; font-weight: 800; margin-top: 2px; font-family: 'Courier New', monospace; line-height: 1.1; }
+          .doc-cliente-label { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.8px; margin-top: 10px; }
+          .doc-cliente { font-size: 14px; font-weight: 800; text-transform: uppercase; color: #0f172a; }
+          .doc-data { font-size: 9.5px; color: #94a3b8; margin-top: 8px; }
+          .doc-status { margin-top: 6px; }
 
           .resumo-box {
             display: flex; justify-content: space-between; align-items: flex-start; gap: 18px;
@@ -350,18 +350,19 @@ function montarHTML(ordem: OrdemServico, empresa: Empresa, pdfTema: PdfTema, log
             ${logoBase64 ? `<img src="${logoBase64}" class="empresa-logo" />` : ''}
             <div>
               <div class="empresa-nome">${escapeHtml(empresa.nome)}</div>
+              ${empresa.segmento ? `<div class="empresa-tag">${escapeHtml(empresa.segmento)}</div>` : ''}
               ${empresa.cnpj ? `<div class="empresa-info">CNPJ: ${escapeHtml(empresa.cnpj)}</div>` : ''}
               ${enderecoEmpresa ? `<div class="empresa-info">${enderecoEmpresa}</div>` : ''}
               ${contatoEmpresa ? `<div class="empresa-info">${contatoEmpresa}</div>` : ''}
             </div>
           </div>
           <div class="doc-bloco">
-            <div class="doc-titulo">ORDEM DE SERVIÇO</div>
-            <div class="doc-numero">${ordem.numeroOS ? `Nº ${escapeHtml(ordem.numeroOS)}` : '&mdash;'}</div>
+            <div class="doc-label">Ordem de Serviço Nº</div>
+            <div class="doc-numero">${ordem.numeroOS ? escapeHtml(ordem.numeroOS) : '&mdash;'}</div>
             <div class="doc-cliente-label">Cliente</div>
             <div class="doc-cliente">${escapeHtml(ordem.cliente)}</div>
-            <div class="doc-data">Emitido em ${new Date().toLocaleDateString('pt-BR')}</div>
             <div class="doc-status">${badge(ordem.status, corStatus)}</div>
+            <div class="doc-data">Emitido em ${new Date().toLocaleDateString('pt-BR')}</div>
           </div>
         </div>
 
