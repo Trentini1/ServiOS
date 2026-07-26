@@ -53,6 +53,7 @@
     },
     "android": {
       "package": "com.trentini.servios",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#0b1220",
         "foregroundImage": "./assets/android-icon-foreground.png",
