@@ -287,7 +287,7 @@ function montarHTML(ordem: OrdemServico, empresa: Empresa, pdfTema: PdfTema, log
       <head>
         <meta charset="utf-8" />
         <style>
-          @page { size: A4; margin: 56px 40px; }
+          @page { size: A4; margin: 68px 54px; }
           * {
             box-sizing: border-box;
             font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
