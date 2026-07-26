@@ -288,11 +288,18 @@ function montarHTML(ordem: OrdemServico, empresa: Empresa, pdfTema: PdfTema, log
         <meta charset="utf-8" />
         <style>
           @page { size: A4; margin: 56px 40px; }
-          * { box-sizing: border-box; font-family: -apple-system, Helvetica, Arial, sans-serif; }
+          * {
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+          }
           html, body {
             -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact;
           }
-          body { margin: 0; padding: 0; color: #1e293b; font-size: 13px; line-height: 1.45; }
+          body {
+            margin: 0; padding: 0; color: #1e293b; font-size: 13px; line-height: 1.45;
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+          }
 
           .cabecalho {
             display: flex; justify-content: space-between; align-items: flex-start;
@@ -303,7 +310,7 @@ function montarHTML(ordem: OrdemServico, empresa: Empresa, pdfTema: PdfTema, log
             width: 60px; height: 60px; object-fit: contain; border-radius: 8px;
             background: #ffffff; border: 1px solid #e2e8f0; flex-shrink: 0; padding: 4px;
           }
-          .empresa-nome { font-size: 24px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px; line-height: 1.1; }
+          .empresa-nome { font-size: 24px; font-weight: 800; text-transform: uppercase; letter-spacing: -0.3px; line-height: 1.1; }
           .empresa-tag {
             display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase;
             letter-spacing: 0.6px; padding: 2px 8px; border-radius: 3px; margin-top: 5px;
@@ -311,7 +318,7 @@ function montarHTML(ordem: OrdemServico, empresa: Empresa, pdfTema: PdfTema, log
           .empresa-info { font-size: 10.5px; color: #64748b; margin-top: 3px; }
           .doc-bloco { text-align: right; }
           .doc-label { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.8px; }
-          .doc-numero { font-size: 20px; font-weight: 800; margin-top: 2px; font-family: 'Courier New', monospace; line-height: 1.1; }
+          .doc-numero { font-size: 20px; font-weight: 800; margin-top: 2px; font-variant-numeric: tabular-nums; letter-spacing: 0.4px; line-height: 1.1; }
           .doc-cliente-label { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.8px; margin-top: 10px; }
           .doc-cliente { font-size: 14px; font-weight: 800; text-transform: uppercase; color: #0f172a; }
           .doc-data { font-size: 9.5px; color: #94a3b8; margin-top: 8px; }
@@ -325,7 +332,7 @@ function montarHTML(ordem: OrdemServico, empresa: Empresa, pdfTema: PdfTema, log
           .resumo-lado { flex: 1; }
           .resumo-lado-direita { text-align: right; }
           .resumo-valor { font-size: 13.5px; font-weight: 700; margin-top: 3px; }
-          .resumo-linha-periodo { font-size: 10.5px; font-weight: 600; font-family: 'Courier New', monospace; margin-top: 2px; }
+          .resumo-linha-periodo { font-size: 10.5px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: 0.2px; margin-top: 2px; }
           .resumo-total {
             font-size: 10px; font-weight: 700; margin-top: 5px; padding-top: 5px; border-top: 1px solid;
           }
@@ -338,8 +345,8 @@ function montarHTML(ordem: OrdemServico, empresa: Empresa, pdfTema: PdfTema, log
             padding: 7px 10px;
           }
           .campo-label { font-size: 8px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.3px; }
-          .campo-valor { font-size: 11.5px; color: #1e293b; font-weight: 700; margin-top: 3px; }
-          .campo-valor-simples { font-size: 11.5px; color: #64748b; font-weight: 700; margin-top: 3px; }
+          .campo-valor { font-size: 11.5px; color: #1e293b; font-weight: 600; letter-spacing: -0.1px; margin-top: 3px; }
+          .campo-valor-simples { font-size: 11.5px; color: #64748b; font-weight: 600; margin-top: 3px; }
           .descricao-texto { font-size: 12.5px; color: #334155; line-height: 1.7; white-space: pre-line; }
           .badge {
             display: inline-block; padding: 3px 10px; border-radius: 5px;
