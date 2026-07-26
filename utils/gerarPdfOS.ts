@@ -1,5 +1,6 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import { File, Paths } from 'expo-file-system';
 import type { OrdemServico, DiaExecucao, PecaUtilizada } from '../screens/OSListScreen';
 import type { PdfTema } from './temas';
 import { PDF_TEMA_PADRAO } from './temas';
@@ -107,6 +108,19 @@ function blocoAssinatura(titulo: string, imagemBase64?: string, destaque?: strin
       <div class="assinatura-linha"></div>
       ${tituloHtml}
     </div>`;
+}
+
+function sanitizarNomeArquivo(texto: string): string {
+  return texto.replace(/[\/\\:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim();
+}
+
+function nomeArquivoPdf(ordem: OrdemServico): string {
+  const partes = [
+    ordem.numeroOS ? `OS ${ordem.numeroOS}` : 'OS',
+    ordem.motor,
+    ordem.dataCriacao?.replace(/\//g, '-'),
+  ].filter(Boolean) as string[];
+  return `${sanitizarNomeArquivo(partes.join(' - '))}.pdf`;
 }
 
 function calcularDensidade(ordem: OrdemServico): number {
@@ -463,11 +477,17 @@ export async function gerarESalvarPdfOS(
 ) {
   const html = montarHTML(ordem, empresa, pdfTema, logoBase64);
   const { uri } = await Print.printToFileAsync({ html });
+
+  const nomeFinal = nomeArquivoPdf(ordem);
+  const destino = new File(Paths.cache, nomeFinal);
+  if (destino.exists) destino.delete();
+  new File(uri).copy(destino);
+
   const disponivel = await Sharing.isAvailableAsync();
   if (disponivel) {
-    await Sharing.shareAsync(uri, {
+    await Sharing.shareAsync(destino.uri, {
       mimeType: 'application/pdf',
-      dialogTitle: `OS - ${ordem.cliente}`,
+      dialogTitle: nomeFinal,
       UTI: 'com.adobe.pdf',
     });
   }
