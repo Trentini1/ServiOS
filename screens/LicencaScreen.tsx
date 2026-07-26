@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Linking, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThema } from '../contexts/ThemeContext';
@@ -9,7 +9,7 @@ import { restaurarCompras, type StatusAssinatura } from '../utils/subscription';
 const URL_PRIVACIDADE = 'https://trentini1.github.io/tecnoos-privacidade/';
 const URL_TERMOS_USO = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
 
-type Props = { uid: string; status: StatusAssinatura; onVoltar: () => void; onAbrirPaywall: () => void };
+type Props = { uid: string; email?: string; status: StatusAssinatura; onVoltar: () => void; onAbrirPaywall: () => void };
 
 const RECURSOS_PRO = [
   'OS ilimitadas por mês',
@@ -25,10 +25,57 @@ function formatarData(data: Date): string {
   return data.toLocaleDateString('pt-BR');
 }
 
-export default function LicencaScreen({ uid, status, onVoltar, onAbrirPaywall }: Props) {
+export default function LicencaScreen({ uid, email, status, onVoltar, onAbrirPaywall }: Props) {
   const tema   = useThema();
   const styles = useMemo(() => criarEstilos(tema), [tema]);
   const [restaurando, setRestaurando] = useState(false);
+
+  if (Platform.OS === 'android') {
+    const corStatusAndroid = status.ativo ? '#16a34a' : '#f87171';
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onVoltar} style={[styles.iconBtn, { backgroundColor: tema.card, borderColor: tema.borda }]}>
+            <Ionicons name="arrow-back" size={20} color={tema.texto} />
+          </TouchableOpacity>
+          <View>
+            <Text style={[styles.titulo, { color: tema.texto }]}>Minha Licença</Text>
+            <Text style={[styles.subtitulo, { color: tema.textoMuted }]}>Acesso ao TecnoOS</Text>
+          </View>
+          <View style={{ width: 40 }} />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <View style={[styles.planoAtualCard, { backgroundColor: tema.card, borderColor: tema.borda }]}>
+            <View style={styles.planoAtualTop}>
+              <View style={[styles.planoIcone, { backgroundColor: corStatusAndroid + '20' }]}>
+                <Ionicons name={status.ativo ? 'shield-checkmark' : 'lock-closed-outline'} size={22} color={corStatusAndroid} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.planoAtualLabel, { color: tema.textoMuted }]}>Status</Text>
+                <Text style={[styles.planoAtualNome, { color: tema.texto }]}>
+                  {status.ativo ? 'Acesso Liberado' : 'Acesso Não Liberado'}
+                </Text>
+              </View>
+            </View>
+            <View style={[styles.divisor, { backgroundColor: tema.borda }]} />
+            <Text style={[styles.planoAtualInfo, { color: tema.textoSec }]}>
+              {status.ativo && status.expiraEm
+                ? `Válido até ${formatarData(status.expiraEm)}.`
+                : 'O acesso a esta conta é liberado manualmente. Entre em contato informando o e-mail abaixo.'}
+            </Text>
+          </View>
+
+          {!status.ativo && !!email && (
+            <View style={[styles.gerenciarBtn, { backgroundColor: tema.card, borderColor: tema.borda }]}>
+              <Ionicons name="mail-outline" size={16} color={tema.texto} />
+              <Text style={[styles.gerenciarBtnTexto, { color: tema.texto }]}>{email}</Text>
+            </View>
+          )}
+        </ScrollView>
+      </View>
+    );
+  }
 
   const corStatus = status.assinante ? '#16a34a' : status.trial ? '#d97706' : '#f87171';
   const tituloStatus = status.assinante

@@ -10,6 +10,8 @@
  *      módulo nativo, não funciona no Expo Go nem no dev client já instalado.
  */
 
+import { Platform } from 'react-native';
+import firestore from '@react-native-firebase/firestore';
 import Purchases, { type PurchasesPackage } from 'react-native-purchases';
 import { carregarAssinatura, salvarAssinatura, type DadosAssinatura } from './cloudStorage';
 
@@ -26,6 +28,26 @@ export type StatusAssinatura = {
   expiraEm: Date | null;
 };
 
+export type AcessoManual = { ativo: boolean; ativoAte: Date | null };
+
+/**
+ * No Android o acesso não passa pela RevenueCat/Play Billing (não configurado) — é
+ * liberado manualmente pelo painel admin, gravando um prazo em
+ * /acessosManuais/{email} no Firestore. Ver firestore.rules: só o e-mail do próprio
+ * usuário (leitura) ou o e-mail admin (leitura/escrita) acessam esse documento.
+ */
+export async function verificarAcessoManual(email: string): Promise<AcessoManual> {
+  try {
+    const snap = await firestore().collection('acessosManuais').doc(email).get();
+    const dados = snap.data();
+    const ativoAte = dados?.ativoAte ? new Date(dados.ativoAte) : null;
+    return { ativo: !!ativoAte && ativoAte.getTime() > Date.now(), ativoAte };
+  } catch (e) {
+    console.warn('[subscription] Não foi possível consultar acesso manual:', e);
+    return { ativo: false, ativoAte: null };
+  }
+}
+
 let revenueCatConfigurado = false;
 
 export async function iniciarRevenueCat(uid: string): Promise<void> {
@@ -41,7 +63,21 @@ export async function iniciarRevenueCat(uid: string): Promise<void> {
   }
 }
 
-export async function verificarAssinatura(uid: string): Promise<StatusAssinatura> {
+export async function verificarAssinatura(uid: string, email?: string): Promise<StatusAssinatura> {
+  // Android: Play Billing não está configurado (sem Play Store/MEI). O acesso é
+  // 100% controlado manualmente pelo painel admin, sem trial nem RevenueCat.
+  if (Platform.OS === 'android') {
+    const acesso = email ? await verificarAcessoManual(email) : { ativo: false, ativoAte: null };
+    return {
+      ativo: acesso.ativo,
+      assinante: false,
+      trial: false,
+      trialUsado: false,
+      diasRestantesTrial: 0,
+      expiraEm: acesso.ativoAte,
+    };
+  }
+
   let assinante = false;
   let expiraEm: Date | null = null;
 

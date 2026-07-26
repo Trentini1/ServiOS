@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import LoginScreen from './screens/LoginScreen';
@@ -62,8 +62,8 @@ function AppInner() {
   const [dataAgendadaOS, setDataAgendadaOS]       = useState<string | undefined>(undefined);
   const [statusAssinatura, setStatusAssinatura]   = useState<StatusAssinatura | null>(null);
 
-  async function recarregarStatusAssinatura(uidAtual: string) {
-    const status = await verificarAssinatura(uidAtual);
+  async function recarregarStatusAssinatura(uidAtual: string, emailAtual?: string) {
+    const status = await verificarAssinatura(uidAtual, emailAtual);
     setStatusAssinatura(status);
   }
 
@@ -75,8 +75,12 @@ function AppInner() {
         setUid(firebaseUser.uid);
         const empresaSalva = await carregarEmpresa(firebaseUser.uid);
         if (empresaSalva) setEmpresa(empresaSalva);
-        await iniciarRevenueCat(firebaseUser.uid);
-        await recarregarStatusAssinatura(firebaseUser.uid);
+        // RevenueCat/Play Billing só está configurado no iOS; no Android o acesso
+        // é liberado manualmente (ver verificarAssinatura em utils/subscription.ts).
+        if (Platform.OS === 'ios') {
+          await iniciarRevenueCat(firebaseUser.uid);
+        }
+        await recarregarStatusAssinatura(firebaseUser.uid, firebaseUser.email ?? undefined);
       } else {
         setUsuarioLogado(null);
         setUid('');
@@ -141,8 +145,9 @@ function AppInner() {
     return (
       <PaywallScreen
         uid={uid}
+        email={usuarioLogado?.email}
         podeIniciarTrial={!statusAssinatura.trialUsado}
-        onLiberado={() => recarregarStatusAssinatura(uid)}
+        onLiberado={() => recarregarStatusAssinatura(uid, usuarioLogado?.email)}
         onExcluirConta={() => irPara('excluir-conta')}
       />
     );
@@ -288,6 +293,7 @@ function AppInner() {
     return (
       <LicencaScreen
         uid={uid}
+        email={usuarioLogado?.email}
         status={statusAssinatura}
         onVoltar={() => irPara('configuracoes')}
         onAbrirPaywall={() => irPara('paywall')}
@@ -298,8 +304,9 @@ function AppInner() {
     return (
       <PaywallScreen
         uid={uid}
+        email={usuarioLogado?.email}
         podeIniciarTrial={!statusAssinatura.trialUsado}
-        onLiberado={() => { recarregarStatusAssinatura(uid); irPara('licenca'); }}
+        onLiberado={() => { recarregarStatusAssinatura(uid, usuarioLogado?.email); irPara('licenca'); }}
         onVoltar={() => irPara('licenca')}
       />
     );

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Linking, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { PurchasesPackage } from 'react-native-purchases';
@@ -13,6 +13,7 @@ const COR_ALERTA = '#f87171';
 
 type Props = {
   uid: string;
+  email?: string;
   podeIniciarTrial: boolean;
   onLiberado: () => void;
   onVoltar?: () => void;
@@ -26,7 +27,7 @@ const BENEFICIOS = [
   { icone: 'create-outline', texto: 'Assinatura digital do cliente e do técnico' },
 ];
 
-export default function PaywallScreen({ uid, podeIniciarTrial, onLiberado, onVoltar, onExcluirConta }: Props) {
+export default function PaywallScreen({ uid, email, podeIniciarTrial, onLiberado, onVoltar, onExcluirConta }: Props) {
   const tema = useThema();
   const styles = useMemo(() => criarEstilos(tema), [tema]);
 
@@ -79,6 +80,38 @@ export default function PaywallScreen({ uid, podeIniciarTrial, onLiberado, onVol
     } finally {
       setProcessando(false);
     }
+  }
+
+  // Android: sem Play Billing configurado — o acesso é liberado manualmente
+  // pelo administrador (ver utils/subscription.ts), sem trial nem assinatura in-app.
+  if (Platform.OS === 'android') {
+    return (
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <View style={[styles.logoBox, { backgroundColor: tema.primario + '22', borderColor: tema.primario + '44' }]}>
+            <Ionicons name="lock-closed" size={30} color={tema.primario} />
+          </View>
+
+          <Text style={[styles.titulo, { color: tema.texto }]}>Acesso Restrito</Text>
+          <Text style={[styles.subtitulo, { color: tema.textoSec }]}>
+            Esta conta ainda não tem acesso liberado ao TecnoOS. Entre em contato informando o e-mail abaixo para liberar o uso.
+          </Text>
+
+          {!!email && (
+            <View style={[styles.emailCard, { backgroundColor: tema.card, borderColor: tema.borda }]}>
+              <Ionicons name="mail-outline" size={16} color={tema.primario} />
+              <Text style={[styles.emailTexto, { color: tema.texto }]}>{email}</Text>
+            </View>
+          )}
+
+          {onExcluirConta && (
+            <TouchableOpacity onPress={onExcluirConta} style={styles.linkBtn}>
+              <Text style={[styles.linkTexto, { color: tema.textoFraco }]}>Excluir minha conta</Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
+      </View>
+    );
   }
 
   return (
@@ -212,5 +245,10 @@ function criarEstilos(t: AppTema) {
     linkTexto: { fontSize: 13, fontWeight: '600', textAlign: 'center' },
     legalLinhas: { flexDirection: 'row', justifyContent: 'center', marginTop: 8 },
     legalTexto: { fontSize: 11, fontWeight: '600', textDecorationLine: 'underline' },
+    emailCard: {
+      flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%',
+      borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 20, marginTop: 4,
+    },
+    emailTexto: { fontSize: 14, fontWeight: '700' },
   });
 }
