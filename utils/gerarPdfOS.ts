@@ -287,7 +287,7 @@ function montarHTML(ordem: OrdemServico, empresa: Empresa, pdfTema: PdfTema, log
       <head>
         <meta charset="utf-8" />
         <style>
-          @page { size: A4; margin: 68px 54px; }
+          @page { size: A4; margin: 0; }
           * {
             box-sizing: border-box;
             font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -296,7 +296,7 @@ function montarHTML(ordem: OrdemServico, empresa: Empresa, pdfTema: PdfTema, log
             -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact;
           }
           body {
-            margin: 0; padding: 0; color: #1e293b; font-size: 13px; line-height: 1.45;
+            margin: 0; padding: 68px 54px; color: #1e293b; font-size: 13px; line-height: 1.45;
             text-rendering: optimizeLegibility;
             -webkit-font-smoothing: antialiased;
           }
