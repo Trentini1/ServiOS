@@ -109,6 +109,32 @@ function blocoAssinatura(titulo: string, imagemBase64?: string, destaque?: strin
     </div>`;
 }
 
+function calcularDensidade(ordem: OrdemServico): number {
+  let pontos = 0;
+  if (ordem.clienteTelefone) pontos++;
+  if (ordem.tecnicoResponsavel) pontos++;
+  if (ordem.dataAgendada) pontos++;
+  if (ordem.prioridade) pontos++;
+  if (ordem.tempoEstimado) pontos++;
+  if (ordem.garantia !== undefined) pontos++;
+  if (ordem.modelo) pontos++;
+  if (ordem.ano) pontos++;
+  if (ordem.placa) pontos++;
+  if (ordem.horimetro) pontos++;
+  if (ordem.tipoVeiculo) pontos++;
+  if (ordem.seguro) pontos++;
+  if (ordem.descricao) pontos += 2;
+  if (ordem.valorEstimado) pontos++;
+  if (ordem.formaPagamento) pontos++;
+  if (ordem.solicitante) pontos++;
+  if (ordem.contatoSolicitante) pontos++;
+  if (ordem.enderecoServico) pontos++;
+  if (ordem.diasExecucao?.length) pontos += 2;
+  if (ordem.pecas?.length) pontos += 2;
+  if (ordem.fotos?.length) pontos += 3;
+  return pontos;
+}
+
 function resumoServico(ordem: OrdemServico, cor: string): string {
   const dias = ordem.diasExecucao ?? [];
   const diasOrdenados = [...dias].sort((a, b) => a.data.localeCompare(b.data));
@@ -225,6 +251,7 @@ function montarHTML(ordem: OrdemServico, empresa: Empresa, pdfTema: PdfTema, log
   const contatoEmpresa = [empresa.telefone, empresa.email].filter(Boolean).map(escapeHtml).join(' · ');
   const corStatus = STATUS_CORES[ordem.status] ?? pdfTema.corAcento;
   const corPrioridade = ordem.prioridade ? (PRIORIDADE_CORES[ordem.prioridade] ?? pdfTema.corAcento) : undefined;
+  const espacoso = calcularDensidade(ordem) <= 3;
 
   const infoGeral = [
     campo('Telefone do Cliente', ordem.clienteTelefone),
@@ -341,10 +368,27 @@ function montarHTML(ordem: OrdemServico, empresa: Empresa, pdfTema: PdfTema, log
             margin-top: 40px; padding-top: 12px; font-size: 9.5px; text-align: center;
             text-transform: uppercase; letter-spacing: 0.3px;
           }
+
+          /* Modo espaçoso: OS com pouco conteúdo ganham tipografia e respiro maiores
+             em vez de ficar com a página curta e cheia de espaço em branco solto. */
+          body.espacoso { font-size: 15px; line-height: 1.75; }
+          body.espacoso .empresa-nome { font-size: 28px; }
+          body.espacoso .doc-numero { font-size: 23px; }
+          body.espacoso .doc-cliente { font-size: 17px; }
+          body.espacoso .resumo-box { padding: 16px 22px; margin-bottom: 26px; }
+          body.espacoso .resumo-valor { font-size: 16px; }
+          body.espacoso .resumo-linha-periodo { font-size: 12px; }
+          body.espacoso .secao { margin-bottom: 30px; }
+          body.espacoso .grid { gap: 12px; }
+          body.espacoso .campo { padding: 11px 15px; min-width: 160px; }
+          body.espacoso .campo-label { font-size: 9px; }
+          body.espacoso .campo-valor { font-size: 13px; }
+          body.espacoso .descricao-texto { font-size: 14.5px; line-height: 1.95; }
+          body.espacoso .assinaturas { margin-top: 64px; }
           ${css}
         </style>
       </head>
-      <body>
+      <body class="${espacoso ? 'espacoso' : ''}">
         <div class="cabecalho">
           <div class="empresa-bloco">
             ${logoBase64 ? `<img src="${logoBase64}" class="empresa-logo" />` : ''}
