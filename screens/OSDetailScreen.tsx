@@ -15,13 +15,7 @@ import type { OrdemServico } from './OSListScreen';
 import SignatureModal from '../components/SignatureModal';
 import FotosOS from '../components/FotosOS';
 import { gerarESalvarPdfOS } from '../utils/gerarPdfOS';
-import { PDF_TEMA_PADRAO } from '../utils/temas';
-import type { PdfTema } from '../utils/temas';
-
-type Empresa = {
-  nome: string; cnpj?: string; telefone?: string; email?: string;
-  endereco?: string; cidade?: string; estado?: string; segmento?: string;
-};
+import { useThemeContext } from '../contexts/ThemeContext';
 
 type Props = {
   uid: string;
@@ -40,6 +34,7 @@ const CORES_STATUS: Record<string, string> = {
 };
 
 export default function OSDetailScreen({ uid, osId, onVoltar, onAlterado, onEditarOS }: Props) {
+  const { pdfTema } = useThemeContext();
   const [ordem, setOrdem]               = useState<OrdemServico | null>(null);
   const [modalAssinatura, setModalAssinatura] = useState<'tecnico' | 'cliente' | null>(null);
   const [exportando, setExportando]     = useState(false);
@@ -88,7 +83,6 @@ export default function OSDetailScreen({ uid, osId, onVoltar, onAlterado, onEdit
     setExportando(true);
     try {
       const empresa  = await carregarEmpresa(uid);
-      const pdfTema  = (await carregar<PdfTema>('pdfTema')) ?? PDF_TEMA_PADRAO;
       const logo     = await carregar<string>('logoEmpresa');
       await gerarESalvarPdfOS(
         ordem,
